@@ -1,29 +1,62 @@
 {
   "expo": {
-    "name": "SafrasMilhas",
-    "slug": "SafrasMilhas",
+    "name": "Safras Milhas",
+    "slug": "safras-milhas",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1A73E8"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.safras.milhas",
+      "infoPlist": {
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Necessário para rastrear seus trajetos automaticamente em segundo plano, mesmo quando o app está fechado.",
+        "NSLocationAlwaysUsageDescription": "Necessário para rastrear seus trajetos automaticamente em segundo plano, mesmo quando o app está fechado.",
+        "NSLocationWhenInUseUsageDescription": "Necessário para registrar seus trajetos de trabalho.",
+        "NSMotionUsageDescription": "Usado para detectar automaticamente quando você está se deslocando de carro.",
+        "UIBackgroundModes": ["location", "fetch"]
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#1A73E8"
       },
-      "edgeToEdgeEnabled": true
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "ACTIVITY_RECOGNITION",
+        "FOREGROUND_SERVICE"
+      ]
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Necessário para rastrear seus trajetos automaticamente.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      "expo-sqlite",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#1A73E8"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "safras-milhas"
+      }
     }
   }
 }
