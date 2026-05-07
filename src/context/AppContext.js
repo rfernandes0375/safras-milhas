@@ -35,6 +35,7 @@ export const AppProvider = ({ children }) => {
   const [mesAtual, setMesAtual] = useState(new Date().toISOString().slice(0, 7));
   const [config, setConfig] = useState(CONFIG_PADRAO);
   const [rastreamentoAtivo, setRastreamentoAtivo] = useState(false);
+  const [viagemEmCurso, setViagemEmCurso] = useState(false);
 
   // 1. Inicializa Banco e Carrega Dados
   const inicializarApp = useCallback(async () => {
@@ -56,7 +57,7 @@ export const AppProvider = ({ children }) => {
         config: configSalva || CONFIG_PADRAO,
         onViagemDetectada: handleNovaViagem,
         onViagemAtualizada: (estado) => {
-          // Opcional: atualizar UI em tempo real se houver viagem em curso
+          setViagemEmCurso(!!estado?.emAndamento);
         }
       });
       setRastreamentoAtivo(ativo);
@@ -115,13 +116,26 @@ export const AppProvider = ({ children }) => {
   }, [viagensPendentes, config]);
 
   const editarViagem = useCallback(async (id, novosDados) => {
-    // Atualiza apenas descrição (valor já foi fixado na classificação)
+    const viagem = viagensConfirmadas.find(v => v.id === id);
+    if (!viagem) return;
+
+    const dadosAtualizados = { ...viagem, ...novosDados };
+    
+    // Persiste no Banco
+    await Database.atualizarViagem(id, {
+      descricao: dadosAtualizados.descricao,
+      valor: dadosAtualizados.valor,
+      classificacao: dadosAtualizados.classificacao
+    });
+
+    // Atualiza Estado
     setViagensConfirmadas(prev => prev.map(v => 
-      v.id === id ? { ...v, ...novosDados } : v
+      v.id === id ? dadosAtualizados : v
     ));
-  }, []);
+  }, [viagensConfirmadas]);
 
   const excluirViagem = useCallback(async (id) => {
+    await Database.excluirViagem(id);
     setViagensConfirmadas(prev => prev.filter(v => v.id !== id));
   }, []);
 
@@ -131,6 +145,12 @@ export const AppProvider = ({ children }) => {
     Tracking.atualizarConfig(novaConfig);
   }, []);
 
+  const pararViagem = useCallback(async () => {
+    const sucesso = await Tracking.pararViagemManualmente();
+    if (sucesso) await carregarViagens();
+    return sucesso;
+  }, [carregarViagens]);
+
   return (
     <AppContext.Provider value={{
       viagensPendentes, viagensConfirmadas, mesAtual, setMesAtual, config,
@@ -138,7 +158,9 @@ export const AppProvider = ({ children }) => {
       totalReembolsoMes: viagensConfirmadas.reduce((sum, v) => sum + (v.valor || 0), 0),
       totalPendentes: viagensPendentes.length,
       rastreamentoAtivo,
+      viagemEmCurso,
       classificarViagem, editarViagem, excluirViagem, salvarConfig, carregarViagens, carregando,
+      pararViagem,
     }}>
       {children}
     </AppContext.Provider>

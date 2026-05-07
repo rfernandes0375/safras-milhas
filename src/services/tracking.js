@@ -6,8 +6,8 @@
  *
  * Lógica de detecção de viagem:
  * - Início: velocidade > 12 km/h detectada
- * - Fim: velocidade = 0 por mais de 2 minutos consecutivos
- * - Distância mínima: 500m (viagens menores são descartadas)
+ * - Fim: velocidade < 3 km/h por mais de 1 minuto consecutivo
+ * - Distância mínima: 200m (viagens menores são descartadas)
  */
 
 import * as Location from 'expo-location';
@@ -52,13 +52,15 @@ TaskManager.defineTask(TASK_RASTREAMENTO, async ({ data, error }) => {
 const processarLocalizacao = async (local) => {
   const { latitude, longitude, speed, timestamp, accuracy } = local.coords;
 
-  if (accuracy > 60) return;
+  // Aumentada tolerância para evitar descarte em áreas de sinal médio
+  if (accuracy > 80) return;
 
   const velocidadeKmh = (speed || 0) * 3.6;
   const agora = timestamp || Date.now();
 
   if (!estadoViagem.emAndamento) {
-    if (velocidadeKmh > 12) {
+    // Iniciando rastreio mais cedo (8 km/h)
+    if (velocidadeKmh > 8) {
       console.log('[Tracking] Viagem iniciada');
       estadoViagem.emAndamento = true;
       estadoViagem.inicio = new Date(agora).toISOString();
@@ -83,7 +85,7 @@ const processarLocalizacao = async (local) => {
     if (velocidadeKmh < 3) {
       const penultimoPonto = estadoViagem.coordenadas[estadoViagem.coordenadas.length - 2];
       if (penultimoPonto) estadoViagem.tempoParado += agora - penultimoPonto.t;
-      if (estadoViagem.tempoParado >= 120_000) {
+      if (estadoViagem.tempoParado >= 60_000) {
         await finalizarViagem(latitude, longitude, agora);
       }
     } else {
@@ -94,7 +96,7 @@ const processarLocalizacao = async (local) => {
 };
 
 // ─── Finalização de viagem ────────────────────────────────────────────────────
-const finalizarViagem = async (latFim, lngFim, agora) => {
+const finalizarViagem = async (latFim, lngFim, agora, forcar = false) => {
   const coordenadas = estadoViagem.coordenadas;
   const distanciaKm = calcularDistanciaKm(coordenadas);
   const distanciaMetros = distanciaKm * 1000;
@@ -117,8 +119,12 @@ const finalizarViagem = async (latFim, lngFim, agora) => {
   estadoViagem.tempoParado = 0;
 
   if (estadoViagem.callbackAtualizar) estadoViagem.callbackAtualizar(null);
-
-  if (distanciaMetros < (estadoViagem.config?.distanciaMinima || 500)) return;
+  
+  const distMinima = estadoViagem.config?.distanciaMinima || 200;
+  if (!forcar && distanciaMetros < distMinima) {
+    console.log(`[Tracking] Viagem descartada: ${distanciaMetros.toFixed(0)}m (mínimo ${distMinima}m)`);
+    return;
+  }
 
   let localInicio = 'Local desconhecido';
   let localFim = 'Local desconhecido';
@@ -196,6 +202,15 @@ export const iniciarRastreamento = async ({ onViagemDetectada, onViagemAtualizad
     );
     return true;
   }
+};
+
+export const pararViagemManualmente = async () => {
+  if (estadoViagem.emAndamento && estadoViagem.coordenadas.length > 0) {
+    const ultimo = estadoViagem.coordenadas[estadoViagem.coordenadas.length - 1];
+    await finalizarViagem(ultimo.lat, ultimo.lng, Date.now(), true);
+    return true;
+  }
+  return false;
 };
 
 export const atualizarConfig = (novaConfig) => {

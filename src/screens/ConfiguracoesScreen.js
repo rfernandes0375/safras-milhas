@@ -107,19 +107,45 @@ export default function ConfiguracoesScreen() {
       <StatusBar barStyle="light-content" backgroundColor={cores.cinzaFundo} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={estilos.scroll}>
 
-        <Text style={estilos.titulo}>Configurações</Text>
+        {/* ─── Perfil / Header Premium ────────────────────────────────── */}
+        <View style={estilos.perfilHeader}>
+          <View style={estilos.avatarContainer}>
+            <Ionicons name="car-sport" size={32} color={cores.primario} />
+          </View>
+          <View style={estilos.perfilInfo}>
+            <Text style={estilos.perfilNome}>Configurações</Text>
+            <Text style={estilos.perfilSub}>Gestão de Frota e Reembolso</Text>
+          </View>
+        </View>
+
+        {/* ─── Resumo Rápido (Cards Horizontais) ───────────────────────── */}
+        <View style={estilos.resumoHorizontal}>
+          <View style={estilos.cardMini}>
+            <Text style={estilos.cardMiniValor}>{form.distanciaMinima}m</Text>
+            <Text style={estilos.cardMiniLabel}>Dist. Mínima</Text>
+          </View>
+          <View style={estilos.cardMini}>
+            <Text style={estilos.cardMiniValor}>R$ {form.valorPorKm}</Text>
+            <Text style={estilos.cardMiniLabel}>Taxa/KM</Text>
+          </View>
+          <View style={estilos.cardMini}>
+            <Text style={estilos.cardMiniValor}>{form.notificacaoHora}h</Text>
+            <Text style={estilos.cardMiniLabel}>Lembrete</Text>
+          </View>
+        </View>
 
         {/* ─── Cálculo de Reembolso ─────────────────────────────────── */}
-        <Secao titulo="Cálculo de Reembolso" icone="calculator-outline">
-          <Text style={estilos.campoLabel}>Modo de cálculo</Text>
+        <Secao titulo="Cálculo de Reembolso" icone="calculator-outline" corIcone="#00D1FF">
+          <Text style={estilos.campoLabel}>Método Preferencial</Text>
           <View style={estilos.modoContainer}>
             <TouchableOpacity
               style={[estilos.botaoModo, form.modoCalculo === 'consumo' && estilos.botaoModoAtivo]}
               onPress={() => atualizar('modoCalculo', 'consumo')}
               activeOpacity={0.7}
             >
+              <Ionicons name="funnel-outline" size={16} color={form.modoCalculo === 'consumo' ? cores.primario : cores.cinzaTexto} />
               <Text style={[estilos.botaoModoTexto, form.modoCalculo === 'consumo' && estilos.botaoModoTextoAtivo]}>
-                Por consumo
+                Consumo
               </Text>
             </TouchableOpacity>
 
@@ -128,138 +154,126 @@ export default function ConfiguracoesScreen() {
               onPress={() => atualizar('modoCalculo', 'km')}
               activeOpacity={0.7}
             >
+              <Ionicons name="speedometer-outline" size={16} color={form.modoCalculo === 'km' ? cores.primario : cores.cinzaTexto} />
               <Text style={[estilos.botaoModoTexto, form.modoCalculo === 'km' && estilos.botaoModoTextoAtivo]}>
-                Por R$/km
+                Taxa Fixa
               </Text>
             </TouchableOpacity>
           </View>
 
-          <View style={{ height: 16 }} />
+          <View style={{ height: 20 }} />
 
           {form.modoCalculo === 'consumo' ? (
-            <>
+            <View style={estilos.gridInputs}>
               <CampoNumerico
-                label="Consumo médio (km/L)"
+                label="Média (km/L)"
                 valor={form.consumoMedio}
                 onChange={(v) => atualizar('consumoMedio', v)}
-                placeholder="Ex: 10"
+                placeholder="10"
                 sufixo="km/L"
+                style={{ flex: 1 }}
               />
+              <View style={{ width: 12 }} />
               <CampoNumerico
-                label="Preço do combustível (R$/L)"
+                label="Preço (R$/L)"
                 valor={form.precoCombustivel}
                 onChange={(v) => atualizar('precoCombustivel', v)}
-                placeholder="Ex: 6,50"
+                placeholder="6,50"
                 prefixo="R$"
+                style={{ flex: 1 }}
               />
-            </>
+            </View>
           ) : (
             <CampoNumerico
-              label="Valor por quilômetro"
+              label="Valor por quilômetro rodado"
               valor={form.valorPorKm}
               onChange={(v) => atualizar('valorPorKm', v)}
-              placeholder="Ex: 0,60"
+              placeholder="Ex: 0,85"
               prefixo="R$"
               sufixo="/km"
             />
           )}
         </Secao>
 
-        {/* ─── Localização e Geofence ────────────────────────────────── */}
-        <Secao titulo="Localização" icone="location-outline">
+        {/* ─── Localização ───────────────────────────────────────────── */}
+        <Secao titulo="Rastreamento" icone="map-outline" corIcone="#10B981">
           <View style={estilos.baseEndereco}>
-            <Text style={{ color: cores.texto, fontWeight: 'bold' }}>Sede Safras & Cifras</Text>
-            <Text style={{ color: cores.cinzaEscuro, fontSize: 12 }}>📍 Av. Olinda, 960 — Park Lozandes, Goiânia-GO</Text>
+            <View style={estilos.baseIcone}>
+              <Ionicons name="business" size={20} color={cores.primario} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={estilos.baseTitulo}>Sede Safras & Cifras</Text>
+              <Text style={estilos.baseSub}>Park Lozandes, Goiânia-GO</Text>
+            </View>
           </View>
           
-          <CampoNumerico
-            label="Raio de detecção (metros)"
-            valor={form.raioGeofence}
-            onChange={(v) => atualizar('raioGeofence', v)}
-            placeholder="300"
-            sufixo="m"
-          />
+          <View style={estilos.gridInputs}>
+            <CampoNumerico
+              label="Raio Detecção"
+              valor={form.raioGeofence}
+              onChange={(v) => atualizar('raioGeofence', v)}
+              sufixo="m"
+              style={{ flex: 1 }}
+            />
+            <View style={{ width: 12 }} />
+            <CampoNumerico
+              label="Dist. Mínima"
+              valor={form.distanciaMinima}
+              onChange={(v) => atualizar('distanciaMinima', v)}
+              sufixo="m"
+              style={{ flex: 1 }}
+            />
+          </View>
           <Text style={estilos.dica}>
-            Viagens que partem ou chegam neste raio são marcadas como "provável trabalho"
-          </Text>
-
-          <View style={{ height: 20 }} />
-
-          <CampoNumerico
-            label="Distância mínima para salvar"
-            valor={form.distanciaMinima}
-            onChange={(v) => atualizar('distanciaMinima', v)}
-            placeholder="500"
-            sufixo="m"
-          />
-          <Text style={estilos.dica}>
-            Viagens menores que isso serão descartadas automaticamente.
+            <Ionicons name="information-circle-outline" size={12} /> Ajustes finos para a precisão do GPS.
           </Text>
         </Secao>
 
-        {/* ─── Notificações ─────────────────────────────────────────── */}
-        <Secao titulo="Notificação Semanal" icone="notifications-outline">
-          <Text style={estilos.descricao}>
-            Toda sexta-feira, você receberá um lembrete para classificar os trajetos pendentes.
-          </Text>
-          <CampoNumerico
-            label="Horário da notificação"
-            valor={form.notificacaoHora}
-            onChange={(v) => atualizar('notificacaoHora', v)}
-            placeholder="17"
-            sufixo="h"
-          />
-        </Secao>
-
-        {/* ─── Sobre o Rastreamento (DINÂMICO) ──────────────────────── */}
-        <Secao titulo="Resumo das Regras" icone="radio-outline">
-          <View style={estilos.infoItem}>
-            <Ionicons name="checkmark-circle" size={16} color={cores.sucesso} />
-            <Text style={estilos.infoTexto}>Detectar início acima de 12 km/h</Text>
-          </View>
-          <View style={estilos.infoItem}>
-            <Ionicons name="checkmark-circle" size={16} color={cores.sucesso} />
-            <Text style={estilos.infoTexto}>Salvar viagens maiores que {form.distanciaMinima || '500'}m</Text>
-          </View>
-          <View style={estilos.infoItem}>
-            <Ionicons name="checkmark-circle" size={16} color={cores.sucesso} />
-            <Text style={estilos.infoTexto}>Raio de detecção na Sede: {form.raioGeofence || '300'}m</Text>
-          </View>
-          <View style={estilos.infoItem}>
-            <Ionicons name="checkmark-circle" size={16} color={cores.sucesso} />
-            <Text style={estilos.infoTexto}>Lembrete semanal: Sextas às {form.notificacaoHora || '17'}h</Text>
+        {/* ─── Agendamento ─────────────────────────────────────────── */}
+        <Secao titulo="Lembretes" icone="time-outline" corIcone="#F59E0B">
+          <View style={estilos.linhaNotif}>
+            <View style={{ flex: 1 }}>
+              <Text style={estilos.campoLabel}>Alerta de Triagem</Text>
+              <Text style={estilos.descricao}>Notificação toda sexta-feira</Text>
+            </View>
+            <CampoNumerico
+              valor={form.notificacaoHora}
+              onChange={(v) => atualizar('notificacaoHora', v)}
+              sufixo="h"
+              style={{ width: 80, marginBottom: 0 }}
+            />
           </View>
         </Secao>
 
-        {/* ─── Botão Salvar ─────────────────────────────────────────── */}
-        <TouchableOpacity style={estilos.botaoSalvar} onPress={salvar} activeOpacity={0.8}>
-          <Ionicons name="checkmark" size={20} color={cores.branco} />
-          <Text style={estilos.botaoSalvarTexto}>Salvar configurações</Text>
-        </TouchableOpacity>
+        {/* ─── Botões de Ação ───────────────────────────────────────── */}
+        <View style={estilos.footerAcoes}>
+          <TouchableOpacity style={estilos.botaoSalvar} onPress={salvar} activeOpacity={0.8}>
+            <Ionicons name="cloud-upload" size={20} color={cores.branco} />
+            <Text style={estilos.botaoSalvarTexto}>Salvar Ajustes</Text>
+          </TouchableOpacity>
 
-        {/* ─── Botão Teste ─────────────────────────────────────────── */}
-        <TouchableOpacity 
-          style={{ marginTop: 10, marginBottom: 30, padding: 10, alignItems: 'center' }}
-          onPress={gerarDadosTeste}
-        >
-          <Text style={{ color: cores.cinzaTexto, fontSize: 12, textDecorationLine: 'underline' }}>
-            Gerar 3 viagens de teste (para validar banco)
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity 
+            style={estilos.botaoTesteDiscreto}
+            onPress={gerarDadosTeste}
+          >
+            <Ionicons name="flask-outline" size={14} color={cores.cinzaTexto} />
+            <Text style={estilos.botaoTesteTexto}>Gerar Massa de Teste</Text>
+          </TouchableOpacity>
+        </View>
 
-        <Text style={estilos.versao}>Safras Milhas v1.0 — Desenvolvido para Safras & Cifras</Text>
+        <Text style={estilos.versao}>Safras Milhas v1.0.8 • Safras & Cifras</Text>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-// ─── Componentes Auxiliares ───────────────────────────────────────────────────
-
-function Secao({ titulo, icone, children }) {
+function Secao({ titulo, icone, corIcone, children }) {
   return (
     <View style={estilos.secao}>
       <View style={estilos.secaoHeader}>
-        <Ionicons name={icone} size={18} color={cores.primario} />
+        <View style={[estilos.secaoIconeContainer, { backgroundColor: (corIcone || cores.primario) + '15' }]}>
+          <Ionicons name={icone} size={18} color={corIcone || cores.primario} />
+        </View>
         <Text style={estilos.secaoTitulo}>{titulo}</Text>
       </View>
       {children}
@@ -267,10 +281,10 @@ function Secao({ titulo, icone, children }) {
   );
 }
 
-function CampoNumerico({ label, valor, onChange, placeholder, prefixo, sufixo }) {
+function CampoNumerico({ label, valor, onChange, placeholder, prefixo, sufixo, style }) {
   return (
-    <View style={estilos.campo}>
-      <Text style={estilos.campoLabel}>{label}</Text>
+    <View style={[estilos.campo, style]}>
+      {label && <Text style={estilos.campoLabel}>{label}</Text>}
       <View style={estilos.inputGroup}>
         {prefixo && <Text style={estilos.inputPrefixo}>{prefixo}</Text>}
         <TextInput
@@ -282,170 +296,217 @@ function CampoNumerico({ label, valor, onChange, placeholder, prefixo, sufixo })
           placeholderTextColor="#94A3B8"
         />
         {sufixo && <Text style={estilos.inputSufixo}>{sufixo}</Text>}
-        <Ionicons name="pencil-outline" size={14} color="#94A3B8" style={{ marginLeft: 8 }} />
       </View>
     </View>
   );
 }
 
-// ─── Estilos ─────────────────────────────────────────────────────────────────
 const estilos = StyleSheet.create({
   container: { flex: 1, backgroundColor: cores.cinzaFundo },
   scroll: { padding: espacamento.md, paddingBottom: espacamento.xxl },
-  titulo: {
-    fontSize: tipografia.titulo,
+
+  // Perfil Header
+  perfilHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: espacamento.lg,
+    paddingTop: espacamento.sm,
+  },
+  avatarContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(0, 209, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 209, 255, 0.2)',
+    marginRight: espacamento.md,
+  },
+  perfilInfo: { flex: 1 },
+  perfilNome: {
+    fontSize: 24,
     fontWeight: tipografia.bold,
     color: cores.texto,
-    marginBottom: espacamento.md,
+  },
+  perfilSub: {
+    fontSize: 14,
+    color: cores.cinzaTexto,
+  },
+
+  // Resumo Horizontal
+  resumoHorizontal: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: espacamento.xl,
+  },
+  cardMini: {
+    flex: 1,
+    backgroundColor: cores.fundoCard,
+    borderRadius: 16,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: cores.cinzaClaro,
+  },
+  cardMiniValor: {
+    fontSize: 16,
+    fontWeight: tipografia.bold,
+    color: cores.primario,
+    marginBottom: 2,
+  },
+  cardMiniLabel: {
+    fontSize: 10,
+    color: cores.cinzaTexto,
+    textTransform: 'uppercase',
+    fontWeight: '700',
   },
 
   secao: {
     backgroundColor: cores.fundoCard,
-    borderRadius: bordas.lg,
-    padding: espacamento.md,
-    marginBottom: espacamento.md,
+    borderRadius: 20,
+    padding: espacamento.lg,
+    marginBottom: espacamento.lg,
     borderWidth: 1,
     borderColor: cores.cinzaClaro,
+    ...sombras.pequena,
   },
   secaoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: espacamento.sm,
-    marginBottom: espacamento.md,
-    paddingBottom: espacamento.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: cores.cinzaMedio,
+    marginBottom: espacamento.lg,
+  },
+  secaoIconeContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   secaoTitulo: {
-    fontSize: tipografia.normal,
-    fontWeight: tipografia.semibold,
+    fontSize: 16,
+    fontWeight: tipografia.bold,
     color: cores.texto,
   },
 
-  campo: {
-    marginBottom: espacamento.md,
-  },
+  gridInputs: { flexDirection: 'row' },
+  campo: { marginBottom: espacamento.md },
   campoLabel: {
-    fontSize: 14,
-    color: cores.cinzaEscuro,
+    fontSize: 13,
+    color: cores.cinzaTexto,
     marginBottom: 8,
     fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  descricao: {
-    fontSize: 14,
-    color: cores.cinzaTexto,
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-  dica: {
-    fontSize: 12,
-    color: cores.cinzaTexto,
-    marginTop: 4,
-    fontStyle: 'italic',
-    opacity: 0.8,
-  },
-
   modoContainer: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 8,
+    marginTop: 4,
   },
   botaoModo: {
     flex: 1,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'transparent',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 12,
+    height: 48,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    gap: 8,
   },
   botaoModoAtivo: {
     backgroundColor: 'rgba(0, 209, 255, 0.1)',
-    borderColor: '#00D1FF',
+    borderColor: cores.primario,
   },
   botaoModoTexto: {
+    color: cores.cinzaTexto,
     fontSize: 14,
     fontWeight: '600',
-    color: cores.cinzaTexto,
   },
   botaoModoTextoAtivo: {
-    color: '#00D1FF',
+    color: cores.primario,
   },
-
   inputGroup: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderRadius: 12,
     paddingHorizontal: 16,
-    height: 56,
+    height: 52,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   input: {
     flex: 1,
     color: cores.branco,
     fontSize: 16,
     fontWeight: '600',
-    textAlign: 'left',
-    paddingVertical: 0,
   },
-  inputPrefixo: {
-    color: cores.cinzaTexto,
-    fontSize: 14,
-    fontWeight: '600',
-    marginRight: 8,
-  },
-  inputSufixo: {
-    color: cores.cinzaTexto,
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
+  inputPrefixo: { color: cores.cinzaTexto, marginRight: 4, fontWeight: '600' },
+  inputSufixo: { color: cores.cinzaTexto, marginLeft: 4, fontWeight: '600' },
 
   baseEndereco: {
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    padding: espacamento.md,
-    borderRadius: bordas.md,
-    marginBottom: espacamento.md,
-    borderWidth: 1,
-    borderColor: cores.cinzaClaro,
-  },
-
-  infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: espacamento.sm,
-    paddingVertical: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
-  infoTexto: {
-    fontSize: 14,
+  baseIcone: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 209, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  baseTitulo: { color: cores.texto, fontWeight: 'bold', fontSize: 14 },
+  baseSub: { color: cores.cinzaTexto, fontSize: 12 },
+
+  linhaNotif: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  descricao: { fontSize: 13, color: cores.cinzaTexto, lineHeight: 18 },
+  dica: {
+    fontSize: 11,
     color: cores.cinzaTexto,
+    marginTop: 4,
+    opacity: 0.6,
   },
 
+  footerAcoes: { marginTop: espacamento.md, marginBottom: espacamento.xl },
   botaoSalvar: {
     backgroundColor: cores.primario,
-    borderRadius: bordas.lg,
-    paddingVertical: espacamento.md,
+    borderRadius: 16,
+    height: 56,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: espacamento.sm,
-    marginBottom: espacamento.md,
+    gap: 10,
     ...sombras.grande,
   },
   botaoSalvarTexto: {
-    color: cores.branco,
-    fontSize: tipografia.normal,
-    fontWeight: tipografia.semibold,
+    color: '#0F172A',
+    fontSize: 16,
+    fontWeight: '700',
   },
-
-  versao: {
-    textAlign: 'center',
-    fontSize: tipografia.micro,
-    color: cores.cinzaTexto,
-    marginTop: espacamento.sm,
+  botaoTesteDiscreto: {
+    marginTop: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    opacity: 0.4,
   },
+  botaoTesteTexto: { color: cores.cinzaTexto, fontSize: 12 },
+  versao: { textAlign: 'center', fontSize: 10, color: cores.cinzaTexto, opacity: 0.5 },
 });

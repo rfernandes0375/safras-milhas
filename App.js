@@ -28,6 +28,7 @@ import DashboardScreen from './src/screens/DashboardScreen';
 import TriagemScreen from './src/screens/TriagemScreen';
 import HistoricoScreen from './src/screens/HistoricoScreen';
 import ConfiguracoesScreen from './src/screens/ConfiguracoesScreen';
+import DetalhesViagemScreen from './src/screens/DetalhesViagemScreen';
 import RelatorioScreen from './src/screens/RelatorioScreen';
 import { cores, tipografia } from './src/utils/theme';
 
@@ -100,6 +101,14 @@ function RootNavigator() {
       <Stack.Screen
         name="Relatorio"
         component={RelatorioScreen}
+        options={{
+          presentation: 'card',
+          animation: 'slide_from_right',
+        }}
+      />
+      <Stack.Screen
+        name="DetalhesViagem"
+        component={DetalhesViagemScreen}
         options={{
           presentation: 'card',
           animation: 'slide_from_right',

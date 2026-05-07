@@ -11,7 +11,7 @@
 import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, StatusBar, Animated, Image
+  TouchableOpacity, StatusBar, Animated, Image, Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,8 +22,8 @@ import { formatarMoeda, formatarKm, formatarData, formatarHora } from '../utils/
 export default function DashboardScreen({ navigation }) {
   const {
     totalKmMes, totalReembolsoMes, totalPendentes,
-    viagensConfirmadas, rastreamentoAtivo, mesAtual,
-    carregando,
+    viagensConfirmadas, rastreamentoAtivo, viagemEmCurso, 
+    pararViagem, mesAtual, carregando,
   } = useApp();
 
   // Pega as últimas 5 viagens confirmadas para o resumo
@@ -61,10 +61,29 @@ export default function DashboardScreen({ navigation }) {
             <Text style={estilos.rastreaioTexto}>
               {rastreamentoAtivo ? 'Rastreando' : 'Pausado'}
             </Text>
+            {viagemEmCurso && (
+              <TouchableOpacity 
+                style={estilos.botaoPararManual}
+                onPress={async () => {
+                  const parou = await pararViagem();
+                  if (parou) {
+                    Alert.alert('Sucesso', 'Viagem encerrada e enviada para a Triagem!');
+                  }
+                }}
+              >
+                <Ionicons name="stop-circle" size={18} color={cores.branco} />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
-        <Text style={estilos.headerTitulo}>Resumo de Combustível</Text>
+        <View style={estilos.headerRow}>
+          <Text style={estilos.headerTitulo}>Reembolso de Combustível</Text>
+          <View style={estilos.statusBadge}>
+            <View style={estilos.pontoStatus} />
+            <Text style={estilos.statusTexto}>ATIVO</Text>
+          </View>
+        </View>
 
         {/* ─── Card Hero: Total do Mês ──────────────────────────────────── */}
         <View style={estilos.cardHero}>
@@ -87,8 +106,47 @@ export default function DashboardScreen({ navigation }) {
           </View>
         </View>
 
+        {/* ─── Gráfico Semanal ────────────────────────────────────────── */}
+        <View style={estilos.graficoContainer}>
+          <Text style={estilos.graficoTitulo}>KM nos últimos 7 dias</Text>
+          <View style={estilos.graficoBarras}>
+            {(() => {
+              const hoje = new Date();
+              const dias = [];
+              const nomesDias = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+              
+              for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(hoje.getDate() - i);
+                const dataStr = d.toISOString().split('T')[0];
+                const kmDia = viagensConfirmadas
+                  .filter(v => v.inicio.startsWith(dataStr))
+                  .reduce((acc, v) => acc + (v.distanciaKm || 0), 0);
+                dias.push({ label: nomesDias[d.getDay()], km: kmDia, hoje: i === 0 });
+              }
+              
+              const maxKm = Math.max(...dias.map(d => d.km), 5);
+              
+              return dias.map((dia, idx) => (
+                <View key={idx} style={estilos.colunaGrafico}>
+                  <View style={estilos.barraContainer}>
+                    <View style={[
+                      estilos.barra,
+                      { height: `${(dia.km / maxKm) * 100}%` },
+                      dia.hoje && { backgroundColor: cores.primario }
+                    ]} />
+                  </View>
+                  <Text style={[estilos.diaTexto, dia.hoje && { color: cores.primario, fontWeight: 'bold' }]}>
+                    {dia.label}
+                  </Text>
+                </View>
+              ));
+            })()}
+          </View>
+        </View>
+
         <TouchableOpacity
-          style={[estilos.botaoTriagem, totalPendentes > 0 && estilos.botaoTriagemAtivo]}
+          style={[estilos.botaoTriagem, totalPendentes > 0 ? estilos.botaoTriagemAtivo : estilos.botaoTriagemVazio]}
           onPress={() => navigation.navigate('Triagem')}
           activeOpacity={0.8}
         >
@@ -108,14 +166,14 @@ export default function DashboardScreen({ navigation }) {
           <View style={estilos.botaoTriagemTextos}>
             <Text style={[
               estilos.botaoTriagemTitulo,
-              { color: totalPendentes > 0 ? cores.texto : cores.cinzaEscuro }
+              { color: cores.texto }
             ]}>
               {totalPendentes > 0
                 ? `${totalPendentes} trajeto${totalPendentes > 1 ? 's' : ''} para classificar`
-                : 'Nenhum trajeto pendente'}
+                : 'Triagem de Viagens'}
             </Text>
             <Text style={estilos.botaoTriagemSub}>
-              {totalPendentes > 0 ? 'Toque para classificar agora →' : 'Tudo em dia ✓'}
+              {totalPendentes > 0 ? 'Toque para classificar agora →' : 'Nenhuma viagem pendente ✓'}
             </Text>
           </View>
         </TouchableOpacity>
@@ -141,7 +199,7 @@ export default function DashboardScreen({ navigation }) {
             </View>
           ) : (
             ultimasViagens.map((viagem) => (
-              <ViagemItem key={viagem.id} viagem={viagem} />
+              <ViagemItem key={viagem.id} viagem={viagem} navigation={navigation} />
             ))
           )}
         </View>
@@ -151,9 +209,13 @@ export default function DashboardScreen({ navigation }) {
 }
 
 // ─── Componente: Item de Viagem ───────────────────────────────────────────────
-function ViagemItem({ viagem }) {
+function ViagemItem({ viagem, navigation }) {
   return (
-    <View style={estilos.viagemItem}>
+    <TouchableOpacity 
+      style={estilos.viagemItem}
+      onPress={() => navigation.navigate('DetalhesViagem', { viagem })}
+      activeOpacity={0.7}
+    >
       <View style={estilos.viagemIconeContainer}>
         <Ionicons name="car" size={16} color={cores.primario} />
       </View>
@@ -171,7 +233,7 @@ function ViagemItem({ viagem }) {
         <Text style={estilos.viagemKm}>{formatarKm(viagem.distanciaKm)}</Text>
         <Text style={estilos.viagemReais}>{formatarMoeda(viagem.valor)}</Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -205,11 +267,43 @@ const estilos = StyleSheet.create({
     width: 90,
     height: 25,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.2)',
+  },
+  pontoStatus: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10b981',
+    marginRight: 6,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+  },
+  statusTexto: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#10b981',
+    letterSpacing: 0.5,
+  },
   headerTitulo: {
-    fontSize: tipografia.titulo,
+    fontSize: tipografia.h2,
     fontWeight: tipografia.bold,
-    color: cores.texto,
-    textAlign: 'center',
+    color: cores.branco,
     marginBottom: espacamento.lg,
   },
   rastreamentoIndicador: {
@@ -221,6 +315,15 @@ const estilos = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
+  },
+  botaoPararManual: {
+    marginLeft: 10,
+    backgroundColor: cores.erro,
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   rastreioPonto: {
     width: 8,
@@ -238,8 +341,56 @@ const estilos = StyleSheet.create({
   },
   rastreaioTexto: {
     fontSize: 12,
+    fontWeight: 'bold',
+    color: cores.cinzaTexto,
+    marginLeft: 4,
+  },
+
+  // Gráfico
+  graficoContainer: {
+    backgroundColor: cores.fundoCard,
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  graficoTitulo: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: cores.cinzaTexto,
+    marginBottom: 20,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  graficoBarras: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    height: 100,
+  },
+  colunaGrafico: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  barraContainer: {
+    flex: 1,
+    width: 12,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 6,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
+  barra: {
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 6,
+  },
+  diaTexto: {
+    fontSize: 10,
+    color: cores.cinzaTexto,
+    marginTop: 8,
     fontWeight: '600',
-    color: cores.texto,
   },
 
   // ─── Card Hero ──────────────────────────────────────────────────
@@ -308,9 +459,15 @@ const estilos = StyleSheet.create({
     borderWidth: 1,
     borderColor: cores.cinzaClaro,
   },
+  botaoTriagemVazio: {
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderStyle: 'dashed',
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
   botaoTriagemAtivo: {
+    backgroundColor: 'rgba(0, 209, 255, 0.05)',
+    borderColor: cores.primario,
     borderWidth: 2,
-    borderColor: cores.primarioClaro,
   },
   botaoTriagemIcone: {
     width: 48,

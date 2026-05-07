@@ -133,39 +133,44 @@ export default function RelatorioScreen({ navigation, route }) {
           <View style={{ width: 40 }} />
         </View>
 
-        {/* Card de prévia */}
-        <View style={estilos.cardPrevia}>
-          <Image 
-            source={{ uri: 'https://s.criacaostatic.cc/safrasecifraswng5tdg0/uploads/elementor/thumbs/Logo-Safras-Cifras_Preto-scaled-rjjysb7a3posnup5alh9kcof83jcfvb2evxnsvanbo.png' }}
-            style={{ width: 120, height: 35, tintColor: '#FFFFFF', marginBottom: 12 }}
-            resizeMode="contain"
-          />
-          <Text style={estilos.cardPreviaTitulo}>Relatório de {mesFormatado}</Text>
-          <Text style={estilos.cardPreviaSub}>Reembolso de Combustível</Text>
+        {/* Card de prévia (Simulação de Documento) */}
+        <View style={estilos.folhaDocumento}>
+          <View style={estilos.documentoHeader}>
+            <Image 
+              source={{ uri: 'https://s.criacaostatic.cc/safrasecifraswng5tdg0/uploads/elementor/thumbs/Logo-Safras-Cifras_Preto-scaled-rjjysb7a3posnup5alh9kcof83jcfvb2evxnsvanbo.png' }}
+              style={{ width: 140, height: 45 }}
+              resizeMode="contain"
+            />
+          </View>
 
-          <View style={estilos.cardPreviaDivisor} />
+          <Text style={estilos.documentoTitulo}>Relatório Mensal</Text>
+          <Text style={estilos.documentoSub}>Competência: <Text style={{ fontWeight: 'bold' }}>{mesFormatado}</Text></Text>
 
-          <View style={estilos.cardPreviaStats}>
-            <View style={estilos.stat}>
-              <Text style={estilos.statValor}>{formatarKm(totalKm)}</Text>
-              <Text style={estilos.statLabel}>percorridos</Text>
+          <View style={estilos.documentoDivisor} />
+
+          <View style={estilos.documentoCorpo}>
+            <View style={estilos.documentoRow}>
+              <Text style={estilos.documentoLabel}>Quilometragem Total</Text>
+              <Text style={estilos.documentoValor}>{formatarKm(totalKm)}</Text>
             </View>
-            <View style={estilos.statDivisor} />
+            
             {config?.modoCalculo === 'consumo' && (
-              <>
-                <View style={estilos.stat}>
-                  <Text style={estilos.statValor}>{(totalKm / (config.consumoMedio || 1)).toFixed(1)}L</Text>
-                  <Text style={estilos.statLabel}>consumo</Text>
-                </View>
-                <View style={estilos.statDivisor} />
-              </>
+              <View style={estilos.documentoRow}>
+                <Text style={estilos.documentoLabel}>Consumo Estimado</Text>
+                <Text style={estilos.documentoValor}>{(totalKm / (config.consumoMedio || 1)).toFixed(1)}L</Text>
+              </View>
             )}
-            <View style={estilos.stat}>
-              <Text style={[estilos.statValor, { color: cores.primario }]}>
+
+            <View style={[estilos.documentoRow, { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#EEEEEE' }]}>
+              <Text style={[estilos.documentoLabel, { color: cores.texto, fontWeight: 'bold' }]}>TOTAL REEMBOLSO</Text>
+              <Text style={[estilos.documentoValor, { color: cores.sucesso, fontSize: 20 }]}>
                 {formatarMoeda(totalReembolso)}
               </Text>
-              <Text style={estilos.statLabel}>reembolso</Text>
             </View>
+          </View>
+
+          <View style={estilos.documentoSelo}>
+            <Ionicons name="ribbon-outline" size={24} color="rgba(0,0,0,0.1)" />
           </View>
         </View>
 
@@ -247,10 +252,10 @@ const gerarHTML = (viagens, mes, totalKm, totalValor, config) => {
   const linhasViagens = viagens.map((v, i) => `
     <tr style="background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'}">
       <td class="col-data">${formatarData(v.inicio)}</td>
-      <td class="col-hora">${formatarHora(v.inicio)} – ${formatarHora(v.fim)}</td>
-      <td class="col-trajeto">${v.localInicio || '—'} <br/> <small>até</small> ${v.localFim || '—'}</td>
+      <td class="col-hora">${formatarHora(v.inicio)} - ${formatarHora(v.fim)}</td>
+      <td class="col-trajeto">${v.localInicio || '—'} <strong>&rarr;</strong> ${v.localFim || '—'}</td>
       <td class="col-desc">${v.descricao || '<span class="empty">—</span>'}</td>
-      <td class="col-km">${formatarKm(v.distanciaKm)}</td>
+      <td class="col-km">${formatarKm(v.distanciaKm).replace('\n', ' ')}</td>
       <td class="col-valor">${formatarMoeda(v.valor)}</td>
     </tr>
   `).join('');
@@ -261,48 +266,55 @@ const gerarHTML = (viagens, mes, totalKm, totalValor, config) => {
     <head>
       <meta charset="UTF-8">
       <style>
-        @page { margin: 1.0cm; }
+        @page { size: A4 landscape; margin: 1.0cm; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.5; padding-top: 50px; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.5; padding-top: 30px; }
         
         .debug-header { position: absolute; top: 0; left: 0; right: 0; background: #FF3B30; color: white; text-align: center; font-size: 10px; padding: 5px; font-weight: bold; }
 
-        .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #0891b2; padding-bottom: 20px; margin-bottom: 30px; }
-        .header-title h1 { font-size: 24px; color: #0891b2; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
-        .header-title p { font-size: 14px; color: #64748b; font-weight: 500; }
-        .header-date { text-align: right; font-size: 13px; color: #64748b; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #0891b2; padding-bottom: 15px; margin-bottom: 25px; }
+        .header-title h1 { font-size: 28px; color: #0891b2; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+        .header-title p { font-size: 16px; color: #64748b; font-weight: 500; }
+        .header-date { text-align: right; font-size: 14px; color: #64748b; }
 
-        .totais { display: flex; gap: 16px; margin-bottom: 30px; }
-        .total-card { flex: 1; background: #f1f5f9; border-radius: 12px; padding: 16px; text-align: center; border: 1px solid #e2e8f0; }
-        .total-card .valor { font-size: 22px; font-weight: 800; color: #0891b2; display: block; }
-        .total-card .label { font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 700; margin-top: 4px; letter-spacing: 0.5px; }
+        .totais { display: flex; gap: 20px; margin-bottom: 25px; }
+        .total-card { flex: 1; background: #f1f5f9; border-radius: 12px; padding: 18px; text-align: center; border: 1px solid #e2e8f0; }
+        .total-card .valor { font-size: 24px; font-weight: 800; color: #0891b2; display: block; }
+        .total-card .label { font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700; margin-top: 4px; letter-spacing: 0.5px; }
 
-        .modo-box { font-size: 12px; color: #475569; background: #f8fafc; padding: 10px 15px; border-radius: 8px; border-left: 5px solid #0891b2; margin-bottom: 25px; display: inline-block; }
+        .modo-box { font-size: 13px; color: #475569; background: #f8fafc; padding: 12px 18px; border-radius: 8px; border-left: 5px solid #0891b2; margin-bottom: 20px; display: inline-block; }
 
-        table { width: 100%; border-collapse: collapse; margin-bottom: 40px; font-size: 11px; }
-        th { background: #0891b2; color: white; padding: 14px 10px; text-align: left; text-transform: uppercase; font-weight: 700; font-size: 10px; letter-spacing: 0.5px; }
-        td { padding: 12px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+        .logo-pdf {
+          display: block;
+          margin-bottom: 8px;
+        }
+
+        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 11px; table-layout: fixed; }
+        th { background: #0891b2; color: white; padding: 12px 10px; text-align: left; text-transform: uppercase; font-weight: 700; font-size: 10px; letter-spacing: 0.5px; }
+        td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; word-wrap: break-word; }
         
-        .col-data { width: 90px; font-weight: 600; }
-        .col-hora { width: 100px; color: #64748b; }
-        .col-trajeto { width: 200px; font-weight: 500; }
-        .col-trajeto small { color: #94a3b8; font-size: 9px; text-transform: uppercase; }
-        .col-desc { font-style: italic; color: #334155; min-width: 150px; }
-        .col-km { width: 60px; text-align: center; font-weight: 600; }
-        .col-valor { width: 100px; text-align: right; font-weight: 700; color: #0891b2; }
+        .col-data { width: 75px; white-space: nowrap; }
+        .col-hora { width: 95px; white-space: nowrap; color: #64748b; }
+        .col-trajeto { width: 40%; font-weight: 600; font-size: 8.5px; }
+        .col-desc { width: 30%; font-style: italic; color: #334155; font-size: 8.5px; }
+        .col-km { width: 65px; text-align: center; font-weight: 700; white-space: nowrap; }
+        .col-valor { width: 90px; text-align: right; font-weight: 800; color: #0891b2; white-space: nowrap; }
         .empty { color: #cbd5e1; }
 
-        .footer { border-top: 2px solid #e2e8f0; padding-top: 20px; text-align: center; font-size: 11px; color: #94a3b8; }
-        .footer strong { color: #64748b; }
+        .footer { border-top: 1px solid #e2e8f0; padding-top: 15px; text-align: center; font-size: 5.5px; color: #94a3b8; }
       </style>
     </head>
     <body>
       <div class="header">
-        <div class="logo-container">
-          <img src="https://s.criacaostatic.cc/safrasecifraswng5tdg0/uploads/elementor/thumbs/Logo-Safras-Cifras_Preto-scaled-rjjysb7a3posnup5alh9kcof83jcfvb2evxnsvanbo.png" style="height: 50px;" />
+        <div class="header-title">
+          <img 
+            src="https://s.criacaostatic.cc/safrasecifraswng5tdg0/uploads/elementor/thumbs/Logo-Safras-Cifras_Preto-scaled-rjjysb7a3posnup5alh9kcof83jcfvb2evxnsvanbo.png" 
+            width="110"
+            class="logo-pdf" 
+          />
+          <p>Relatório de Reembolso de Combustível</p>
         </div>
         <div class="header-date">
-          <h1>Relatório de Quilometragem</h1>
           <strong>Período:</strong> ${mesFormatado}<br/>
           <strong>Gerado em:</strong> ${new Date().toLocaleDateString('pt-BR')}
         </div>
@@ -349,8 +361,7 @@ const gerarHTML = (viagens, mes, totalKm, totalValor, config) => {
       </table>
 
       <div class="footer">
-        Este documento é um registro oficial de deslocamentos para fins de reembolso.<br/>
-        Gerado pelo sistema <strong>Safras Milhas v1.0.5</strong>
+        Este documento é um registro de deslocamentos para fins de reembolso. Gerado pelo sistema Safras Milhas v1.0.5 desenvolvido por Rodrigo Ferreira
       </div>
     </body>
     </html>
@@ -384,60 +395,63 @@ const estilos = StyleSheet.create({
     color: cores.texto,
   },
 
-  cardPrevia: {
+  folhaDocumento: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 24,
     marginHorizontal: espacamento.md,
-    backgroundColor: cores.fundoCard,
-    borderRadius: bordas.xl,
-    padding: espacamento.lg,
-    alignItems: 'center',
+    marginBottom: 24,
+    ...sombras.grande,
     borderWidth: 1,
-    borderColor: cores.cinzaClaro,
-    marginBottom: espacamento.md,
+    borderColor: '#E2E8F0',
   },
-  cardPreviaIcone: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: cores.primarioFundo,
+  documentoHeader: {
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: espacamento.sm,
+    marginBottom: 20,
   },
-  cardPreviaTitulo: {
-    fontSize: tipografia.medio,
-    fontWeight: tipografia.bold,
-    color: cores.texto,
+  documentoTitulo: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1E293B',
     marginBottom: 4,
   },
-  cardPreviaSub: {
-    fontSize: tipografia.pequeno,
-    color: cores.cinzaTexto,
-    textAlign: 'center',
+  documentoSub: {
+    fontSize: 14,
+    color: '#64748B',
+    marginBottom: 20,
   },
-  cardPreviaDivisor: {
-    width: '100%',
-    height: 1,
-    backgroundColor: cores.cinzaClaro,
-    marginVertical: espacamento.md,
+  documentoDivisor: {
+    height: 2,
+    backgroundColor: cores.primario,
+    width: 40,
+    marginBottom: 20,
   },
-  cardPreviaStats: {
+  documentoCorpo: {
+    gap: 8,
+  },
+  documentoRow: {
     flexDirection: 'row',
-    width: '100%',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  stat: { flex: 1, alignItems: 'center' },
-  statValor: {
-    fontSize: tipografia.medio,
-    fontWeight: tipografia.bold,
-    color: cores.texto,
-    marginBottom: 3,
+  documentoLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  statLabel: {
-    fontSize: tipografia.micro,
-    color: cores.cinzaTexto,
+  documentoValor: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
   },
-  statDivisor: {
-    width: 1,
-    backgroundColor: cores.cinzaClaro,
+  documentoSelo: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    opacity: 0.5,
   },
 
   secao: {
