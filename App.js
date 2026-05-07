@@ -139,25 +139,28 @@ export default function App() {
   }, []);
 
   const verificarPermissoes = async () => {
-    // No Expo Go, ignoramos o aviso de "Sempre" pois o iOS não permite essa opção para sub-apps
-    if (Constants.appOwnership === 'expo') return;
-
-    // 1. Permissão básica (Foreground)
-    const { status: fgStatus } = await Location.getForegroundPermissionsAsync();
-    if (fgStatus !== 'granted') return;
-
-    // 2. Permissão crítica (Background / "Sempre")
-    const { status: bgStatus } = await Location.getBackgroundPermissionsAsync();
-    
-    if (bgStatus !== 'granted' && Platform.OS === 'ios') {
-      Alert.alert(
-        'Ajuste Necessário',
-        'Para que o Safras Milhas rastreie suas viagens automaticamente com o celular bloqueado, você deve alterar a localização para "Sempre" nos ajustes do iPhone.',
-        [
-          { text: 'Agora não', style: 'cancel' },
-          { text: 'Abrir Ajustes', onPress: () => Linking.openSettings() }
-        ]
-      );
+    try {
+      // 1. Pede permissão de 'Durante o Uso' primeiro
+      const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
+      
+      if (fgStatus === 'granted') {
+        // 2. Se deu certo, agora pedimos a de 'Sempre' (segundo plano)
+        // Isso é o que faz a opção aparecer nos Ajustes
+        const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
+        
+        if (bgStatus !== 'granted' && Platform.OS === 'ios') {
+          Alert.alert(
+            'Localização em 2º Plano',
+            'Para que o rastreio funcione com a tela bloqueada, vá nos Ajustes e mude para "Sempre".',
+            [
+              { text: 'Entendido', style: 'default' },
+              { text: 'Abrir Ajustes', onPress: () => Linking.openSettings() }
+            ]
+          );
+        }
+      }
+    } catch (error) {
+      console.warn('Erro nas permissões:', error);
     }
   };
 

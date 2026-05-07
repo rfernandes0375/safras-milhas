@@ -18,6 +18,9 @@
         "UIBackgroundModes": [
           "location",
           "fetch",
+          "remote-notification",
+          "location",
+          "fetch",
           "remote-notification"
         ],
         "NSLocationWhenInUseUsageDescription": "O Safras Milhas usa sua localização para calcular o reembolso das viagens enquanto você usa o app.",
@@ -25,6 +28,9 @@
         "NSLocationAlwaysUsageDescription": "O Safras Milhas rastreia suas viagens em segundo plano para garantir que nenhum reembolso seja perdido.",
         "NSLocationUsageDescription": "Usamos sua localização para registrar trajetos de trabalho e calcular reembolsos.",
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "runtimeVersion": {
+        "policy": "appVersion"
       }
     },
     "android": {
@@ -38,7 +44,21 @@
         "ACCESS_BACKGROUND_LOCATION",
         "ACTIVITY_RECOGNITION",
         "FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_LOCATION"
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "ACTIVITY_RECOGNITION",
+        "FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE"
       ]
     },
     "plugins": [
@@ -63,6 +83,9 @@
       "eas": {
         "projectId": "a63ae251-caf5-41b3-bebe-8d7c35574bcb"
       }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a63ae251-caf5-41b3-bebe-8d7c35574bcb"
     }
   }
 }
