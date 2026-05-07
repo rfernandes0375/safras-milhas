@@ -4,16 +4,19 @@
  * Configura: navegação, contexto global e permissões iniciais
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Text } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { Text, AppState, Alert, Linking, Platform } from 'react-native';
+import * as Location from 'expo-location';
+import Constants from 'expo-constants';
 
-// Desativar redimensionamento automático de fonte do sistema
+// Desativar redimensionamento automático de fonte do sistema (Fix para Layout TDAH)
 if (Text.defaultProps) {
   Text.defaultProps.allowFontScaling = false;
 } else {
@@ -108,8 +111,50 @@ function RootNavigator() {
 
 // ─── App Principal ────────────────────────────────────────────────────────────
 export default function App() {
+  const appState = useRef(AppState.currentState);
+
+  useEffect(() => {
+    // Verifica permissões ao iniciar e toda vez que o app volta ao foreground
+    verificarPermissoes();
+
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        verificarPermissoes();
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  const verificarPermissoes = async () => {
+    // No Expo Go, ignoramos o aviso de "Sempre" pois o iOS não permite essa opção para sub-apps
+    if (Constants.appOwnership === 'expo') return;
+
+    // 1. Permissão básica (Foreground)
+    const { status: fgStatus } = await Location.getForegroundPermissionsAsync();
+    if (fgStatus !== 'granted') return;
+
+    // 2. Permissão crítica (Background / "Sempre")
+    const { status: bgStatus } = await Location.getBackgroundPermissionsAsync();
+    
+    if (bgStatus !== 'granted' && Platform.OS === 'ios') {
+      Alert.alert(
+        'Ajuste Necessário',
+        'Para que o Safras Milhas rastreie suas viagens automaticamente com o celular bloqueado, você deve alterar a localização para "Sempre" nos ajustes do iPhone.',
+        [
+          { text: 'Agora não', style: 'cancel' },
+          { text: 'Abrir Ajustes', onPress: () => Linking.openSettings() }
+        ]
+      );
+    }
+  };
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <StatusBar style="light" />
       <SafeAreaProvider>
         <AppProvider>
           <NavigationContainer>

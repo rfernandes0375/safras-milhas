@@ -17,11 +17,11 @@ export const cores = {
   aviso: '#F59E0B',
 
   cinzaFundo: '#0B0F19', // Fundo bem escuro (fundo da tela principal)
-  fundoCard: '#141B2D', // Fundo dos cards (substitui o antigo branco)
+  fundoCard: '#1D263D', // Fundo dos cards (levemente mais claro)
   cinzaClaro: '#1E293B', // Bordas e elementos inativos
   cinzaMedio: '#334155', // Divisores
-  cinzaTexto: '#8C9BB3', // Texto secundário
-  cinzaEscuro: '#64748B',
+  cinzaTexto: '#B0B8C1', // Cinza mais claro para legendas
+  cinzaEscuro: '#D1D5DB', // Cinza bem legível
 
   texto: '#FFFFFF', // Texto principal
   textoSecundario: '#8C9BB3',

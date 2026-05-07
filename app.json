@@ -12,17 +12,19 @@
       "backgroundColor": "#1A73E8"
     },
     "ios": {
-      "supportsTablet": false,
-      "bundleIdentifier": "com.safras.milhas",
+      "supportsTablet": true,
+      "bundleIdentifier": "com.safrasmilhas.app",
       "infoPlist": {
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Necessário para rastrear seus trajetos automaticamente em segundo plano, mesmo quando o app está fechado.",
-        "NSLocationAlwaysUsageDescription": "Necessário para rastrear seus trajetos automaticamente em segundo plano, mesmo quando o app está fechado.",
-        "NSLocationWhenInUseUsageDescription": "Necessário para registrar seus trajetos de trabalho.",
-        "NSMotionUsageDescription": "Usado para detectar automaticamente quando você está se deslocando de carro.",
         "UIBackgroundModes": [
           "location",
-          "fetch"
-        ]
+          "fetch",
+          "remote-notification"
+        ],
+        "NSLocationWhenInUseUsageDescription": "O Safras Milhas usa sua localização para calcular o reembolso das viagens enquanto você usa o app.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "O Safras Milhas precisa de acesso 'Sempre' para detectar o início de suas viagens automaticamente, mesmo com o app fechado.",
+        "NSLocationAlwaysUsageDescription": "O Safras Milhas rastreia suas viagens em segundo plano para garantir que nenhum reembolso seja perdido.",
+        "NSLocationUsageDescription": "Usamos sua localização para registrar trajetos de trabalho e calcular reembolsos.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -35,14 +37,15 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
         "ACTIVITY_RECOGNITION",
-        "FOREGROUND_SERVICE"
+        "FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
       ]
     },
     "plugins": [
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Necessário para rastrear seus trajetos automaticamente.",
+          "locationAlwaysAndWhenInUsePermission": "O Safras Milhas precisa de acesso 'Sempre' para detectar o início de suas viagens automaticamente.",
           "isIosBackgroundLocationEnabled": true,
           "isAndroidBackgroundLocationEnabled": true
         }
@@ -55,6 +58,11 @@
           "color": "#1A73E8"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a63ae251-caf5-41b3-bebe-8d7c35574bcb"
+      }
+    }
   }
 }

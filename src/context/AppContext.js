@@ -1,10 +1,10 @@
 /**
- * AppContext.js — Estado global com DADOS MOCKADOS para teste no browser/PC
- *
- * Para testar no PC (Expo Web): este arquivo usa dados simulados, sem SQLite nem GPS.
+ * AppContext.js — Estado global conectado ao SQLite
  */
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import * as Database from '../services/database';
+import * as Tracking from '../services/tracking';
 import { calcularReembolso } from '../utils/calculos';
 
 const AppContext = createContext(null);
@@ -16,10 +16,10 @@ export const useApp = () => {
 };
 
 const CONFIG_PADRAO = {
-  modoCalculo: 'consumo',
+  modoCalculo: 'valor_km', // 'consumo' ou 'valor_km'
   consumoMedio: 10,
   precoCombustivel: 6.5,
-  valorPorKm: 0.60,
+  valorPorKm: 0.85,
   raioGeofence: 300,
   baseLatitude: -16.6704,
   baseLongitude: -49.2552,
@@ -28,74 +28,94 @@ const CONFIG_PADRAO = {
   distanciaMinima: 500,
 };
 
-const hoje = new Date();
-const mesAtualStr = hoje.toISOString().slice(0, 7);
-
-const gerarData = (diasAtras, hora, minuto) => {
-  const d = new Date(hoje);
-  d.setDate(d.getDate() - diasAtras);
-  d.setHours(hora, minuto, 0, 0);
-  return d.toISOString();
-};
-
-const VIAGENS_PENDENTES_MOCK = [
-  {
-    id: 'p1',
-    inicio: gerarData(1, 9, 15),
-    fim: gerarData(1, 9, 42),
-    mesReferencia: mesAtualStr,
-    distanciaMetros: 12400,
-    distanciaKm: 12.4,
-    localInicio: 'Safras & Cifras',
-    localFim: 'Cartório 1º Ofício',
-    valor: 8.06,
-    classificacao: null,
-  },
-  {
-    id: 'p2',
-    inicio: gerarData(2, 14, 30),
-    fim: gerarData(2, 15, 5),
-    mesReferencia: mesAtualStr,
-    distanciaMetros: 8700,
-    distanciaKm: 8.7,
-    localInicio: 'Shopping Flamboyant',
-    localFim: 'Safras & Cifras',
-    valor: 5.66,
-    classificacao: null,
-  }
-];
-
-const VIAGENS_CONFIRMADAS_MOCK = [
-  {
-    id: 'c1',
-    inicio: gerarData(7, 8, 30),
-    fim: gerarData(7, 9, 10),
-    mesReferencia: mesAtualStr,
-    distanciaMetros: 18600,
-    distanciaKm: 18.6,
-    localInicio: 'Safras & Cifras',
-    localFim: 'Banco Bradesco',
-    classificacao: 'trabalho',
-    valor: 12.09,
-    descricao: 'Depósito de cheques e retirada de extratos',
-  }
-];
-
 export const AppProvider = ({ children }) => {
-  const [viagensPendentes, setViagensPendentes] = useState(VIAGENS_PENDENTES_MOCK);
-  const [viagensConfirmadas, setViagensConfirmadas] = useState(VIAGENS_CONFIRMADAS_MOCK);
-  const [mesAtual, setMesAtual] = useState(mesAtualStr);
+  const [carregando, setCarregando] = useState(true);
+  const [viagensPendentes, setViagensPendentes] = useState([]);
+  const [viagensConfirmadas, setViagensConfirmadas] = useState([]);
+  const [mesAtual, setMesAtual] = useState(new Date().toISOString().slice(0, 7));
   const [config, setConfig] = useState(CONFIG_PADRAO);
+  const [rastreamentoAtivo, setRastreamentoAtivo] = useState(false);
 
+  // 1. Inicializa Banco e Carrega Dados
+  const inicializarApp = useCallback(async () => {
+    try {
+      setCarregando(true);
+      await Database.inicializar();
+      
+      // Carrega Configurações
+      const configSalva = await Database.buscarConfig();
+      if (configSalva) {
+        setConfig(prev => ({ ...prev, ...configSalva }));
+      }
+
+      // Carrega Viagens
+      await carregarViagens();
+
+      // Inicia Rastreamento
+      const ativo = await Tracking.iniciarRastreamento({
+        config: configSalva || CONFIG_PADRAO,
+        onViagemDetectada: handleNovaViagem,
+        onViagemAtualizada: (estado) => {
+          // Opcional: atualizar UI em tempo real se houver viagem em curso
+        }
+      });
+      setRastreamentoAtivo(ativo);
+
+    } catch (error) {
+      console.error('[AppContext] Erro na inicialização:', error);
+    } finally {
+      setCarregando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    inicializarApp();
+  }, []);
+
+  // 2. Carrega Viagens do Banco
+  const carregarViagens = useCallback(async (mes) => {
+    const mesFiltro = mes || mesAtual;
+    const [pendentes, confirmadas] = await Promise.all([
+      Database.buscarViagensPendentes(),
+      Database.buscarViagensConfirmadas(mesFiltro)
+    ]);
+    setViagensPendentes(pendentes);
+    setViagensConfirmadas(confirmadas);
+  }, [mesAtual]);
+
+  useEffect(() => {
+    if (!carregando) carregarViagens();
+  }, [mesAtual]);
+
+  // 3. Callback quando o GPS detecta fim de viagem
+  const handleNovaViagem = useCallback(async (novaViagem) => {
+    // Calcula valor inicial (mesmo sendo pendente)
+    const valor = calcularReembolso(novaViagem.distanciaKm, config);
+    const viagemComId = await Database.salvarViagem({ ...novaViagem, valor });
+    setViagensPendentes(prev => [viagemComId, ...prev]);
+  }, [config]);
+
+  // 4. Lógica de Classificação (O que acontece no Swipe)
   const classificarViagem = useCallback(async (id, classificacao, descricao = '') => {
     const viagem = viagensPendentes.find(v => v.id === id);
+    if (!viagem) return;
+
+    // Recalcula valor final com a config ATUAL (caso tenha mudado desde a gravação)
+    const valorFinal = classificacao === 'trabalho' 
+      ? calcularReembolso(viagem.distanciaKm, config)
+      : 0;
+
+    await Database.classificarViagem(id, classificacao, descricao, valorFinal);
+    
     setViagensPendentes(prev => prev.filter(v => v.id !== id));
-    if (classificacao === 'trabalho' && viagem) {
-      setViagensConfirmadas(prev => [{ ...viagem, classificacao: 'trabalho', descricao }, ...prev]);
+    if (classificacao === 'trabalho') {
+      const viagemAtualizada = { ...viagem, classificacao, descricao, valor: valorFinal };
+      setViagensConfirmadas(prev => [viagemAtualizada, ...prev]);
     }
-  }, [viagensPendentes]);
+  }, [viagensPendentes, config]);
 
   const editarViagem = useCallback(async (id, novosDados) => {
+    // Atualiza apenas descrição (valor já foi fixado na classificação)
     setViagensConfirmadas(prev => prev.map(v => 
       v.id === id ? { ...v, ...novosDados } : v
     ));
@@ -106,10 +126,10 @@ export const AppProvider = ({ children }) => {
   }, []);
 
   const salvarConfig = useCallback(async (novaConfig) => {
+    await Database.salvarConfig(novaConfig);
     setConfig(prev => ({ ...prev, ...novaConfig }));
+    Tracking.atualizarConfig(novaConfig);
   }, []);
-
-  const carregarViagens = useCallback(async () => {}, []);
 
   return (
     <AppContext.Provider value={{
@@ -117,8 +137,8 @@ export const AppProvider = ({ children }) => {
       totalKmMes: viagensConfirmadas.reduce((sum, v) => sum + (v.distanciaKm || 0), 0),
       totalReembolsoMes: viagensConfirmadas.reduce((sum, v) => sum + (v.valor || 0), 0),
       totalPendentes: viagensPendentes.length,
-      rastreamentoAtivo: true, viagemEmAndamento: null,
-      classificarViagem, editarViagem, excluirViagem, salvarConfig, carregarViagens, carregando: false,
+      rastreamentoAtivo,
+      classificarViagem, editarViagem, excluirViagem, salvarConfig, carregarViagens, carregando,
     }}>
       {children}
     </AppContext.Provider>

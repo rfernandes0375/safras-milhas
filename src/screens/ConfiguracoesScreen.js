@@ -2,7 +2,7 @@
  * ConfiguracoesScreen.js — Tela de Configurações (Tela 4)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TextInput, TouchableOpacity, Switch, StatusBar, Alert,
@@ -10,57 +10,131 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
+import * as Database from '../services/database';
 import { cores, tipografia, espacamento, bordas, sombras } from '../utils/theme';
 
 export default function ConfiguracoesScreen() {
-  const { config, salvarConfig } = useApp();
+  const { config, salvarConfig, carregarViagens } = useApp();
   const [form, setForm] = useState({
     modoCalculo: config.modoCalculo,
-    consumoMedio: String(config.consumoMedio),
-    precoCombustivel: String(config.precoCombustivel),
-    valorPorKm: String(config.valorPorKm),
+    consumoMedio: String(config.consumoMedio).replace('.', ','),
+    precoCombustivel: String(config.precoCombustivel).replace('.', ','),
+    valorPorKm: String(config.valorPorKm).replace('.', ','),
     raioGeofence: String(config.raioGeofence),
+    distanciaMinima: String(config.distanciaMinima || 500),
     notificacaoHora: String(config.notificacaoHora),
   });
 
+  // Sincroniza formulário se o config mudar (ex: após carregar do banco)
+  useEffect(() => {
+    setForm({
+      modoCalculo: config.modoCalculo,
+      consumoMedio: String(config.consumoMedio).replace('.', ','),
+      precoCombustivel: String(config.precoCombustivel).replace('.', ','),
+      valorPorKm: String(config.valorPorKm).replace('.', ','),
+      raioGeofence: String(config.raioGeofence),
+      distanciaMinima: String(config.distanciaMinima || 500),
+      notificacaoHora: String(config.notificacaoHora),
+    });
+  }, [config]);
+
   const atualizar = (campo, valor) => setForm(prev => ({ ...prev, [campo]: valor }));
+
+  const gerarDadosTeste = async () => {
+    const mock = [
+      {
+        inicio: new Date().toISOString(),
+        fim: new Date(Date.now() + 3600000).toISOString(),
+        distanciaMetros: 15400,
+        distanciaKm: 15.4,
+        valor: 15.4 * 0.85,
+        localInicio: 'Sede Safras & Cifras',
+        localFim: 'Fazenda Rio Verde',
+        descricao: 'Visita técnica mensal',
+        coordenadas: []
+      },
+      {
+        inicio: new Date(Date.now() - 86400000).toISOString(),
+        fim: new Date(Date.now() - 86400000 + 7200000).toISOString(),
+        distanciaMetros: 42100,
+        distanciaKm: 42.1,
+        valor: 42.1 * 0.85,
+        localInicio: 'Fazenda Rio Verde',
+        localFim: 'Sede Safras & Cifras',
+        descricao: 'Retorno de consultoria',
+        coordenadas: []
+      }
+    ];
+
+    try {
+      for (const v of mock) {
+        const salva = await Database.salvarViagem(v);
+        // Força a classificação para trabalho para aparecer no PDF/Histórico
+        await Database.classificarViagem(salva.id, 'trabalho', v.descricao, v.valor);
+      }
+      
+      // Atualiza o estado global para os dados aparecerem na hora
+      await carregarViagens();
+      
+      Alert.alert('Sucesso', 'Viagens de teste geradas! Vá ao Histórico para ver o resultado e testar o PDF.');
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Erro', 'Não foi possível gerar dados de teste. Verifique os logs.');
+    }
+  };
+
+  const limparNumero = (txt) => {
+    if (!txt) return 0;
+    return parseFloat(txt.replace(',', '.')) || 0;
+  };
 
   const salvar = async () => {
     const dados = {
       modoCalculo: form.modoCalculo,
-      consumoMedio: parseFloat(form.consumoMedio) || 10,
-      precoCombustivel: parseFloat(form.precoCombustivel) || 6.5,
-      valorPorKm: parseFloat(form.valorPorKm) || 0.6,
+      consumoMedio: limparNumero(form.consumoMedio) || 10,
+      precoCombustivel: limparNumero(form.precoCombustivel) || 6.5,
+      valorPorKm: limparNumero(form.valorPorKm) || 0.85,
       raioGeofence: parseInt(form.raioGeofence) || 300,
+      distanciaMinima: parseInt(form.distanciaMinima) || 500,
       notificacaoHora: parseInt(form.notificacaoHora) || 17,
     };
     await salvarConfig(dados);
-    Alert.alert('Salvo!', 'Configurações atualizadas com sucesso.');
+    Alert.alert('Sucesso', 'Configurações salvas e aplicadas ao rastreador.');
   };
 
   return (
     <SafeAreaView style={estilos.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" backgroundColor={cores.cinzaFundo} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={estilos.scroll}>
 
         <Text style={estilos.titulo}>Configurações</Text>
 
         {/* ─── Cálculo de Reembolso ─────────────────────────────────── */}
         <Secao titulo="Cálculo de Reembolso" icone="calculator-outline">
-          <Text style={estilos.label}>Modo de cálculo</Text>
+          <Text style={estilos.campoLabel}>Modo de cálculo</Text>
           <View style={estilos.modoContainer}>
-            {['consumo', 'valor_km'].map((modo) => (
-              <TouchableOpacity
-                key={modo}
-                style={[estilos.modoChip, form.modoCalculo === modo && estilos.modoChipAtivo]}
-                onPress={() => atualizar('modoCalculo', modo)}
-              >
-                <Text style={[estilos.modoChipTexto, form.modoCalculo === modo && estilos.modoChipTextoAtivo]}>
-                  {modo === 'consumo' ? 'Por consumo' : 'Por R$/km'}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            <TouchableOpacity
+              style={[estilos.botaoModo, form.modoCalculo === 'consumo' && estilos.botaoModoAtivo]}
+              onPress={() => atualizar('modoCalculo', 'consumo')}
+              activeOpacity={0.7}
+            >
+              <Text style={[estilos.botaoModoTexto, form.modoCalculo === 'consumo' && estilos.botaoModoTextoAtivo]}>
+                Por consumo
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[estilos.botaoModo, form.modoCalculo === 'km' && estilos.botaoModoAtivo]}
+              onPress={() => atualizar('modoCalculo', 'km')}
+              activeOpacity={0.7}
+            >
+              <Text style={[estilos.botaoModoTexto, form.modoCalculo === 'km' && estilos.botaoModoTextoAtivo]}>
+                Por R$/km
+              </Text>
+            </TouchableOpacity>
           </View>
+
+          <View style={{ height: 16 }} />
 
           {form.modoCalculo === 'consumo' ? (
             <>
@@ -91,11 +165,13 @@ export default function ConfiguracoesScreen() {
           )}
         </Secao>
 
-        {/* ─── Geofence da Base ─────────────────────────────────────── */}
-        <Secao titulo="Base Safras & Cifras" icone="location-outline">
-          <Text style={estilos.baseEndereco}>
-            📍 Av. Olinda, 960 — Park Lozandes, Goiânia-GO
-          </Text>
+        {/* ─── Localização e Geofence ────────────────────────────────── */}
+        <Secao titulo="Localização" icone="location-outline">
+          <View style={estilos.baseEndereco}>
+            <Text style={{ color: cores.texto, fontWeight: 'bold' }}>Sede Safras & Cifras</Text>
+            <Text style={{ color: cores.cinzaEscuro, fontSize: 12 }}>📍 Av. Olinda, 960 — Park Lozandes, Goiânia-GO</Text>
+          </View>
+          
           <CampoNumerico
             label="Raio de detecção (metros)"
             valor={form.raioGeofence}
@@ -105,6 +181,19 @@ export default function ConfiguracoesScreen() {
           />
           <Text style={estilos.dica}>
             Viagens que partem ou chegam neste raio são marcadas como "provável trabalho"
+          </Text>
+
+          <View style={{ height: 20 }} />
+
+          <CampoNumerico
+            label="Distância mínima para salvar"
+            valor={form.distanciaMinima}
+            onChange={(v) => atualizar('distanciaMinima', v)}
+            placeholder="500"
+            sufixo="m"
+          />
+          <Text style={estilos.dica}>
+            Viagens menores que isso serão descartadas automaticamente.
           </Text>
         </Secao>
 
@@ -122,23 +211,23 @@ export default function ConfiguracoesScreen() {
           />
         </Secao>
 
-        {/* ─── Sobre o Rastreamento ─────────────────────────────────── */}
-        <Secao titulo="Rastreamento" icone="radio-outline">
+        {/* ─── Sobre o Rastreamento (DINÂMICO) ──────────────────────── */}
+        <Secao titulo="Resumo das Regras" icone="radio-outline">
           <View style={estilos.infoItem}>
             <Ionicons name="checkmark-circle" size={16} color={cores.sucesso} />
-            <Text style={estilos.infoTexto}>Velocidade mínima para detectar viagem: 12 km/h</Text>
+            <Text style={estilos.infoTexto}>Detectar início acima de 12 km/h</Text>
           </View>
           <View style={estilos.infoItem}>
             <Ionicons name="checkmark-circle" size={16} color={cores.sucesso} />
-            <Text style={estilos.infoTexto}>Distância mínima gravada: 500m</Text>
+            <Text style={estilos.infoTexto}>Salvar viagens maiores que {form.distanciaMinima || '500'}m</Text>
           </View>
           <View style={estilos.infoItem}>
             <Ionicons name="checkmark-circle" size={16} color={cores.sucesso} />
-            <Text style={estilos.infoTexto}>Fim de viagem: parado por 2 minutos</Text>
+            <Text style={estilos.infoTexto}>Raio de detecção na Sede: {form.raioGeofence || '300'}m</Text>
           </View>
           <View style={estilos.infoItem}>
             <Ionicons name="checkmark-circle" size={16} color={cores.sucesso} />
-            <Text style={estilos.infoTexto}>Funciona com o app fechado (iOS)</Text>
+            <Text style={estilos.infoTexto}>Lembrete semanal: Sextas às {form.notificacaoHora || '17'}h</Text>
           </View>
         </Secao>
 
@@ -146,6 +235,16 @@ export default function ConfiguracoesScreen() {
         <TouchableOpacity style={estilos.botaoSalvar} onPress={salvar} activeOpacity={0.8}>
           <Ionicons name="checkmark" size={20} color={cores.branco} />
           <Text style={estilos.botaoSalvarTexto}>Salvar configurações</Text>
+        </TouchableOpacity>
+
+        {/* ─── Botão Teste ─────────────────────────────────────────── */}
+        <TouchableOpacity 
+          style={{ marginTop: 10, marginBottom: 30, padding: 10, alignItems: 'center' }}
+          onPress={gerarDadosTeste}
+        >
+          <Text style={{ color: cores.cinzaTexto, fontSize: 12, textDecorationLine: 'underline' }}>
+            Gerar 3 viagens de teste (para validar banco)
+          </Text>
         </TouchableOpacity>
 
         <Text style={estilos.versao}>Safras Milhas v1.0 — Desenvolvido para Safras & Cifras</Text>
@@ -172,17 +271,18 @@ function CampoNumerico({ label, valor, onChange, placeholder, prefixo, sufixo })
   return (
     <View style={estilos.campo}>
       <Text style={estilos.campoLabel}>{label}</Text>
-      <View style={estilos.campoInput}>
-        {prefixo && <Text style={estilos.campoPrefixo}>{prefixo}</Text>}
+      <View style={estilos.inputGroup}>
+        {prefixo && <Text style={estilos.inputPrefixo}>{prefixo}</Text>}
         <TextInput
           style={estilos.input}
           value={valor}
           onChangeText={onChange}
           keyboardType="decimal-pad"
           placeholder={placeholder}
-          placeholderTextColor={cores.cinzaTexto}
+          placeholderTextColor="#94A3B8"
         />
-        {sufixo && <Text style={estilos.campoSufixo}>{sufixo}</Text>}
+        {sufixo && <Text style={estilos.inputSufixo}>{sufixo}</Text>}
+        <Ionicons name="pencil-outline" size={14} color="#94A3B8" style={{ marginLeft: 8 }} />
       </View>
     </View>
   );
@@ -200,11 +300,12 @@ const estilos = StyleSheet.create({
   },
 
   secao: {
-    backgroundColor: cores.branco,
+    backgroundColor: cores.fundoCard,
     borderRadius: bordas.lg,
     padding: espacamento.md,
     marginBottom: espacamento.md,
-    ...sombras.pequena,
+    borderWidth: 1,
+    borderColor: cores.cinzaClaro,
   },
   secaoHeader: {
     flexDirection: 'row',
@@ -213,7 +314,7 @@ const estilos = StyleSheet.create({
     marginBottom: espacamento.md,
     paddingBottom: espacamento.sm,
     borderBottomWidth: 1,
-    borderBottomColor: cores.cinzaClaro,
+    borderBottomColor: cores.cinzaMedio,
   },
   secaoTitulo: {
     fontSize: tipografia.normal,
@@ -221,90 +322,96 @@ const estilos = StyleSheet.create({
     color: cores.texto,
   },
 
-  label: {
-    fontSize: tipografia.pequeno,
+  campo: {
+    marginBottom: espacamento.md,
+  },
+  campoLabel: {
+    fontSize: 14,
     color: cores.cinzaEscuro,
-    marginBottom: espacamento.xs,
-    fontWeight: tipografia.medio,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  descricao: {
+    fontSize: 14,
+    color: cores.cinzaTexto,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  dica: {
+    fontSize: 12,
+    color: cores.cinzaTexto,
+    marginTop: 4,
+    fontStyle: 'italic',
+    opacity: 0.8,
   },
 
   modoContainer: {
     flexDirection: 'row',
-    gap: espacamento.sm,
-    marginBottom: espacamento.md,
+    gap: 12,
+    marginBottom: 8,
   },
-  modoChip: {
+  botaoModo: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: bordas.md,
-    backgroundColor: cores.cinzaClaro,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
-  modoChipAtivo: {
-    backgroundColor: cores.primarioFundo,
-    borderColor: cores.primario,
+  botaoModoAtivo: {
+    backgroundColor: 'rgba(0, 209, 255, 0.1)',
+    borderColor: '#00D1FF',
   },
-  modoChipTexto: {
-    fontSize: tipografia.pequeno,
-    fontWeight: tipografia.semibold,
-    color: cores.cinzaEscuro,
+  botaoModoTexto: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: cores.cinzaTexto,
   },
-  modoChipTextoAtivo: { color: cores.primario },
+  botaoModoTextoAtivo: {
+    color: '#00D1FF',
+  },
 
-  campo: { marginBottom: espacamento.md },
-  campoLabel: {
-    fontSize: tipografia.pequeno,
-    color: cores.cinzaEscuro,
-    marginBottom: 6,
-    fontWeight: tipografia.medio,
-  },
-  campoInput: {
+  inputGroup: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 56,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: cores.cinzaFundo,
-    borderRadius: bordas.md,
+    marginBottom: 8,
     borderWidth: 1,
-    borderColor: cores.cinzaMedio,
-    paddingHorizontal: espacamento.sm,
-  },
-  campoPrefixo: {
-    fontSize: tipografia.normal,
-    color: cores.cinzaEscuro,
-    marginRight: 4,
-  },
-  campoSufixo: {
-    fontSize: tipografia.normal,
-    color: cores.cinzaEscuro,
-    marginLeft: 4,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   input: {
     flex: 1,
-    fontSize: tipografia.normal,
-    color: cores.texto,
-    paddingVertical: 12,
+    color: cores.branco,
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'left',
+    paddingVertical: 0,
+  },
+  inputPrefixo: {
+    color: cores.cinzaTexto,
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: 8,
+  },
+  inputSufixo: {
+    color: cores.cinzaTexto,
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 
   baseEndereco: {
-    fontSize: tipografia.pequeno,
-    color: cores.cinzaEscuro,
-    backgroundColor: cores.cinzaFundo,
-    padding: espacamento.sm,
-    borderRadius: bordas.sm,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    padding: espacamento.md,
+    borderRadius: bordas.md,
     marginBottom: espacamento.md,
-  },
-  dica: {
-    fontSize: tipografia.micro,
-    color: cores.cinzaTexto,
-    marginTop: -8,
-    lineHeight: 16,
-  },
-  descricao: {
-    fontSize: tipografia.pequeno,
-    color: cores.cinzaEscuro,
-    lineHeight: 20,
-    marginBottom: espacamento.md,
+    borderWidth: 1,
+    borderColor: cores.cinzaClaro,
   },
 
   infoItem: {
@@ -314,8 +421,8 @@ const estilos = StyleSheet.create({
     paddingVertical: 6,
   },
   infoTexto: {
-    fontSize: tipografia.pequeno,
-    color: cores.cinzaEscuro,
+    fontSize: 14,
+    color: cores.cinzaTexto,
   },
 
   botaoSalvar: {

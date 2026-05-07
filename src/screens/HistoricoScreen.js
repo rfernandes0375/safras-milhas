@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Swipeable } from 'react-native-gesture-handler';
 import { useApp } from '../context/AppContext';
 import * as Database from '../services/database';
 import { cores, tipografia, espacamento, bordas, sombras } from '../utils/theme';
@@ -27,9 +28,36 @@ export default function HistoricoScreen({ navigation }) {
   const [viagemEdicao, setViagemEdicao] = useState(null);
   const [novaDescricao, setNovaDescricao] = useState('');
 
+  // Estados para seleção múltipla
+  const [selecaoAtiva, setSelecaoAtiva] = useState(false);
+  const [selecionados, setSelecionados] = useState(new Set());
+ 
   useEffect(() => {
     carregarMeses();
-  }, []);
+    setSelecaoAtiva(false);
+    setSelecionados(new Set());
+  }, [mesAtual]);
+
+  const toggleSelecao = (id) => {
+    const novos = new Set(selecionados);
+    if (novos.has(id)) novos.delete(id);
+    else novos.add(id);
+    setSelecionados(novos);
+  };
+
+  const handleExportar = () => {
+    const viagensParaExportar = selecaoAtiva && selecionados.size > 0
+      ? viagensConfirmadas.filter(v => selecionados.has(v.id))
+      : viagensConfirmadas;
+
+    navigation.navigate('Relatorio', { viagensCustom: viagensParaExportar });
+
+    // Reset automático do modo de seleção após exportar
+    if (selecaoAtiva) {
+      setSelecaoAtiva(false);
+      setSelecionados(new Set());
+    }
+  };
 
   const carregarMeses = async () => {
     const meses = await Database.buscarMesesDisponiveis();
@@ -55,18 +83,21 @@ export default function HistoricoScreen({ navigation }) {
     setModalVisivel(false);
   };
 
-  const handleExcluir = () => {
+  const handleExcluir = (viagem) => {
+    const v = viagem || viagemEdicao;
+    if (!v) return;
+
     Alert.alert(
       'Excluir Viagem',
-      'Tem certeza que deseja remover esta viagem permanentemente?',
+      'Tem certeza que deseja remover esta viagem?',
       [
         { text: 'Cancelar', style: 'cancel' },
         { 
           text: 'Excluir', 
           style: 'destructive',
           onPress: async () => {
-            await Database.excluirViagem(viagemEdicao.id);
-            excluirViagem(viagemEdicao.id);
+            await Database.excluirViagem(v.id);
+            excluirViagem(v.id);
             setModalVisivel(false);
           }
         },
@@ -74,46 +105,90 @@ export default function HistoricoScreen({ navigation }) {
     );
   };
 
-  const renderItem = ({ item: viagem, index }) => (
-    <View style={[estilos.itemViagem, index === 0 && { marginTop: 0 }]}>
-      <View style={estilos.itemData}>
-        <Text style={estilos.itemSemana}>
-          {new Date(viagem.inicio).toLocaleDateString('pt-BR', { weekday: 'short' }).toUpperCase()}
-        </Text>
-        <Text style={estilos.itemDia}>
-          {new Date(viagem.inicio).getDate().toString().padStart(2, '0')}
-        </Text>
-        <Text style={estilos.itemMes}>
-          {new Date(viagem.inicio).toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase()}
-        </Text>
-      </View>
-
-      <View style={estilos.itemInfo}>
-        <Text style={estilos.itemRota} numberOfLines={1}>
-          {viagem.localInicio || '—'} → {viagem.localFim || '—'}
-        </Text>
-        <Text style={estilos.itemHorario}>
-          {formatarHora(viagem.inicio)} às {formatarHora(viagem.fim)}
-        </Text>
-        {viagem.descricao && (
-          <Text style={estilos.itemDescricao} numberOfLines={2}>
-            {viagem.descricao}
-          </Text>
-        )}
-      </View>
-
-      <View style={estilos.itemValores}>
-        <Text style={estilos.itemKm}>{formatarKm(viagem.distanciaKm)}</Text>
-        <Text style={estilos.itemReais}>{formatarMoeda(viagem.valor)}</Text>
-        <TouchableOpacity 
-          style={estilos.botaoEditarItem}
-          onPress={() => abrirEdicao(viagem)}
-        >
-          <Ionicons name="create-outline" size={18} color={cores.cinzaTexto} />
-        </TouchableOpacity>
-      </View>
-    </View>
+  const renderLeftActions = (viagem) => (
+    <TouchableOpacity 
+      style={estilos.swipeBotaoEditar} 
+      onPress={() => abrirEdicao(viagem)}
+    >
+      <Ionicons name="create" size={24} color={cores.branco} />
+      <Text style={estilos.swipeBotaoTexto}>Editar</Text>
+    </TouchableOpacity>
   );
+
+  const renderRightActions = (viagem) => (
+    <TouchableOpacity 
+      style={estilos.swipeBotaoExcluir} 
+      onPress={() => handleExcluir(viagem)}
+    >
+      <Ionicons name="trash" size={24} color={cores.branco} />
+      <Text style={estilos.swipeBotaoTexto}>Excluir</Text>
+    </TouchableOpacity>
+  );
+
+  const renderItem = ({ item: viagem, index }) => {
+    const selecionado = selecionados.has(viagem.id);
+    
+    return (
+      <Swipeable
+        renderLeftActions={() => renderLeftActions(viagem)}
+        renderRightActions={() => renderRightActions(viagem)}
+        overshootLeft={false}
+        overshootRight={false}
+        enabled={!selecaoAtiva} // Desativa swipe durante seleção para evitar conflito
+      >
+        <TouchableOpacity 
+          activeOpacity={selecaoAtiva ? 0.7 : 1}
+          onPress={() => selecaoAtiva ? toggleSelecao(viagem.id) : null}
+          style={[
+            estilos.itemViagem, 
+            index === 0 && { marginTop: 0 },
+            selecionado && estilos.itemViagemSelecionado
+          ]}
+        >
+          {selecaoAtiva && (
+            <View style={estilos.checkboxContainer}>
+              <Ionicons 
+                name={selecionado ? "checkbox" : "square-outline"} 
+                size={22} 
+                color={selecionado ? cores.primario : cores.cinzaTexto} 
+              />
+            </View>
+          )}
+
+          <View style={estilos.itemData}>
+            <Text style={estilos.itemSemana}>
+              {new Date(viagem.inicio).toLocaleDateString('pt-BR', { weekday: 'short' }).toUpperCase()}
+            </Text>
+            <Text style={estilos.itemDia}>
+              {new Date(viagem.inicio).getDate().toString().padStart(2, '0')}
+            </Text>
+            <Text style={estilos.itemMes}>
+              {new Date(viagem.inicio).toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase()}
+            </Text>
+          </View>
+
+          <View style={estilos.itemInfo}>
+            <Text style={estilos.itemRota} numberOfLines={1}>
+              {viagem.localInicio || '—'} → {viagem.localFim || '—'}
+            </Text>
+            <Text style={estilos.itemHorario}>
+              {formatarHora(viagem.inicio)} às {formatarHora(viagem.fim)}
+            </Text>
+            {viagem.descricao && (
+              <Text style={estilos.itemDescricao} numberOfLines={2}>
+                {viagem.descricao}
+              </Text>
+            )}
+          </View>
+
+          <View style={estilos.itemValores}>
+            <Text style={estilos.itemKm}>{formatarKm(viagem.distanciaKm)}</Text>
+            <Text style={estilos.itemReais}>{formatarMoeda(viagem.valor)}</Text>
+          </View>
+        </TouchableOpacity>
+      </Swipeable>
+    );
+  };
 
   return (
     <SafeAreaView style={estilos.container}>
@@ -121,13 +196,30 @@ export default function HistoricoScreen({ navigation }) {
 
       {/* Header */}
       <View style={estilos.header}>
-        <Text style={estilos.headerTitulo}>Histórico</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Text style={estilos.headerTitulo}>Histórico</Text>
+          <TouchableOpacity 
+            style={estilos.botaoModoSelecao} 
+            onPress={() => {
+              setSelecaoAtiva(!selecaoAtiva);
+              setSelecionados(new Set());
+            }}
+          >
+            <Text style={[estilos.botaoModoSelecaoTexto, selecaoAtiva && { color: cores.primario }]}>
+              {selecaoAtiva ? 'Cancelar' : 'Selecionar'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity
-          style={estilos.botaoRelatorio}
-          onPress={() => navigation.navigate('Relatorio')}
+          style={[estilos.botaoRelatorio, selecaoAtiva && selecionados.size === 0 && { opacity: 0.5 }]}
+          onPress={handleExportar}
+          disabled={selecaoAtiva && selecionados.size === 0}
         >
           <Ionicons name="document-text-outline" size={18} color={cores.primario} />
-          <Text style={estilos.botaoRelatorioTexto}>Exportar</Text>
+          <Text style={estilos.botaoRelatorioTexto}>
+            {selecaoAtiva && selecionados.size > 0 ? `Exportar (${selecionados.size})` : 'Exportar'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -277,28 +369,31 @@ const estilos = StyleSheet.create({
   seletorMes: {
     paddingHorizontal: espacamento.md,
     paddingVertical: espacamento.sm,
-    gap: espacamento.sm,
+    height: 60,
   },
   chipMes: {
-    paddingHorizontal: espacamento.md,
-    paddingVertical: 7,
-    borderRadius: bordas.pill,
+    paddingHorizontal: 16,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: cores.fundoCard,
     borderWidth: 1,
     borderColor: cores.cinzaClaro,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
   },
   chipMesSelecionado: {
-    backgroundColor: cores.primario,
-    borderColor: cores.primario,
+    backgroundColor: 'rgba(0, 209, 255, 0.1)',
+    borderColor: '#00D1FF',
   },
   chipMesTexto: {
-    fontSize: tipografia.pequeno,
-    color: cores.textoSecundario,
-    fontWeight: tipografia.med,
+    fontSize: 13,
+    color: cores.cinzaTexto,
+    fontWeight: '600',
   },
   chipMesTextoSelecionado: {
-    color: '#0F172A', // Texto escuro no botão cyan
-    fontWeight: tipografia.semibold,
+    color: '#00D1FF',
+    fontWeight: '700',
   },
 
   cardTotais: {
@@ -412,9 +507,33 @@ const estilos = StyleSheet.create({
     textAlign: 'center',
   },
 
-  botaoEditarItem: {
-    marginTop: 8,
-    padding: 4,
+  swipeBotaoEditar: {
+    backgroundColor: '#0ea5e9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    height: 76,
+    borderRadius: bordas.md,
+    marginBottom: espacamento.sm,
+    marginRight: -10, // Para encaixar melhor
+    paddingRight: 10,
+  },
+  swipeBotaoExcluir: {
+    backgroundColor: cores.erro,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    height: 76,
+    borderRadius: bordas.md,
+    marginBottom: espacamento.sm,
+    marginLeft: -10,
+    paddingLeft: 10,
+  },
+  swipeBotaoTexto: {
+    color: cores.branco,
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginTop: 4,
   },
 
   // Estilos do Modal
@@ -501,5 +620,25 @@ const estilos = StyleSheet.create({
     color: '#0F172A',
     fontSize: tipografia.normal,
     fontWeight: tipografia.bold,
+  },
+  botaoModoSelecao: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  botaoModoSelecaoTexto: {
+    fontSize: 12,
+    color: cores.cinzaTexto,
+    fontWeight: '600',
+  },
+  itemViagemSelecionado: {
+    borderColor: cores.primario,
+    backgroundColor: 'rgba(0, 209, 255, 0.05)',
+  },
+  checkboxContainer: {
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

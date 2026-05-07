@@ -11,7 +11,7 @@
 import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, StatusBar, Animated
+  TouchableOpacity, StatusBar, Animated, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,7 +38,7 @@ export default function DashboardScreen({ navigation }) {
 
   return (
     <SafeAreaView style={estilos.container}>
-      <StatusBar barStyle="light-content" backgroundColor={cores.primario} />
+      <StatusBar barStyle="light-content" backgroundColor={cores.cinzaFundo} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -46,20 +46,25 @@ export default function DashboardScreen({ navigation }) {
       >
         {/* ─── Header ──────────────────────────────────────────────────── */}
         <View style={estilos.header}>
-          <View>
-            <Text style={estilos.headerSub}>Safras & Cifras</Text>
-            <Text style={estilos.headerTitulo}>Reembolso</Text>
+          <View style={estilos.logoContainer}>
+            <Image 
+              source={{ uri: 'https://s.criacaostatic.cc/safrasecifraswng5tdg0/uploads/elementor/thumbs/Logo-Safras-Cifras_Preto-scaled-rjjysb7a3posnup5alh9kcof83jcfvb2evxnsvanbo.png' }}
+              style={estilos.logo}
+              resizeMode="contain"
+            />
           </View>
           <View style={estilos.rastreamentoIndicador}>
             <View style={[
               estilos.rastreioPonto,
-              { backgroundColor: rastreamentoAtivo ? cores.sucesso : cores.cinzaTexto }
+              rastreamentoAtivo && estilos.rastreioPontoAtivo
             ]} />
             <Text style={estilos.rastreaioTexto}>
-              {rastreamentoAtivo ? 'Rastreando' : 'Inativo'}
+              {rastreamentoAtivo ? 'Rastreando' : 'Pausado'}
             </Text>
           </View>
         </View>
+
+        <Text style={estilos.headerTitulo}>Resumo de Combustível</Text>
 
         {/* ─── Card Hero: Total do Mês ──────────────────────────────────── */}
         <View style={estilos.cardHero}>
@@ -82,7 +87,6 @@ export default function DashboardScreen({ navigation }) {
           </View>
         </View>
 
-        {/* ─── Botão de Triagem ─────────────────────────────────────────── */}
         <TouchableOpacity
           style={[estilos.botaoTriagem, totalPendentes > 0 && estilos.botaoTriagemAtivo]}
           onPress={() => navigation.navigate('Triagem')}
@@ -179,108 +183,127 @@ const estilos = StyleSheet.create({
   },
   scroll: {
     paddingBottom: espacamento.xxl,
+    paddingHorizontal: espacamento.md,
   },
 
   // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: espacamento.md,
+    alignItems: 'center',
     paddingTop: espacamento.sm,
-    paddingBottom: espacamento.lg,
+    paddingBottom: espacamento.md,
   },
-  headerSub: {
-    fontSize: tipografia.pequeno,
-    color: cores.cinzaTexto,
+  logoContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    ...sombras.pequena,
+  },
+  logo: {
+    width: 90,
+    height: 25,
+  },
+  headerTitulo: {
+    fontSize: tipografia.titulo,
     fontWeight: tipografia.bold,
-    marginTop: 2,
+    color: cores.texto,
+    textAlign: 'center',
+    marginBottom: espacamento.lg,
   },
   rastreamentoIndicador: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: bordas.pill,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   rastreioPonto: {
-    width: 7,
-    height: 7,
+    width: 8,
+    height: 8,
     borderRadius: 4,
-    marginRight: 5,
+    backgroundColor: cores.cinzaEscuro,
+    marginRight: 8,
+  },
+  rastreioPontoAtivo: {
+    backgroundColor: cores.sucesso,
+    shadowColor: cores.sucesso,
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 4,
+    shadowOpacity: 0.8,
   },
   rastreaioTexto: {
-    fontSize: tipografia.micro,
-    color: cores.branco,
-    fontWeight: tipografia.semi,
+    fontSize: 12,
+    fontWeight: '600',
+    color: cores.texto,
   },
 
-  // Card Hero
+  // ─── Card Hero ──────────────────────────────────────────────────
   cardHero: {
-    marginHorizontal: espacamento.md,
     backgroundColor: cores.fundoCard,
-    borderRadius: bordas.xl,
-    padding: espacamento.xl,
+    borderRadius: bordas.lg,
+    padding: espacamento.lg,
+    marginBottom: espacamento.lg,
     overflow: 'hidden',
-    marginBottom: -bordas.xl,
-    paddingBottom: espacamento.xxl,
-    borderWidth: 1,
-    borderColor: cores.cinzaClaro,
+    ...sombras.media,
   },
   cardHeroDecoracao: {
     position: 'absolute',
-    right: -40,
-    top: -40,
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    top: -20,
+    right: -20,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: cores.branco,
+    opacity: 0.05,
   },
   cardHeroLabel: {
-    fontSize: tipografia.pequeno,
-    color: 'rgba(255,255,255,0.75)',
-    fontWeight: tipografia.semi,
+    fontSize: tipografia.micro,
+    fontWeight: tipografia.bold,
+    color: cores.cinzaEscuro,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginBottom: espacamento.sm,
+    marginBottom: 4,
   },
   cardHeroValor: {
-    fontSize: tipografia.hero,
-    color: cores.primario,
-    fontWeight: tipografia.heavy,
-    lineHeight: 42,
+    fontSize: 36,
+    fontWeight: tipografia.bold,
+    color: '#00D1FF', // Ciano vibrante para o valor
+    marginVertical: 4,
   },
   cardHeroSub: {
     fontSize: tipografia.normal,
-    color: 'rgba(255,255,255,0.7)',
+    color: cores.cinzaTexto,
     marginBottom: espacamento.md,
   },
   cardHeroDivisor: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginVertical: espacamento.md,
+    backgroundColor: cores.cinzaMedio,
+    marginBottom: espacamento.md,
+    opacity: 0.5,
   },
   cardHeroKm: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   cardHeroKmTexto: {
-    fontSize: tipografia.medio,
-    color: 'rgba(255,255,255,0.85)',
-    fontWeight: tipografia.semibold,
+    fontSize: tipografia.normal,
+    color: cores.branco,
+    fontWeight: '500',
   },
 
-  // Botão Triagem
+  // ─── Botão Triagem ──────────────────────────────────────────────
   botaoTriagem: {
-    marginHorizontal: espacamento.md,
-    marginTop: espacamento.xxl,
-    backgroundColor: cores.fundoCard,
-    borderRadius: bordas.lg,
-    padding: espacamento.md,
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: cores.fundoCard,
+    padding: espacamento.md,
+    borderRadius: bordas.md,
     marginBottom: espacamento.lg,
     borderWidth: 1,
     borderColor: cores.cinzaClaro,

@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, StatusBar, ActivityIndicator, Alert, Platform, Linking,
+  TouchableOpacity, StatusBar, ActivityIndicator, Alert, Platform, Linking, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,14 +16,29 @@ import { useApp } from '../context/AppContext';
 import { cores, tipografia, espacamento, bordas, sombras } from '../utils/theme';
 import { formatarMoeda, formatarKm, formatarData, formatarHora, formatarMes } from '../utils/calculos';
 
-export default function RelatorioScreen({ navigation }) {
-  const { viagensConfirmadas, mesAtual, totalKmMes, totalReembolsoMes, config } = useApp();
+export default function RelatorioScreen({ navigation, route }) {
+  const { 
+    viagensConfirmadas: todasViagens, mesAtual, 
+    totalKmMes: totalKmPadrao, totalReembolsoMes: totalReembolsoPadrao, config 
+  } = useApp();
+  
   const [gerando, setGerando] = useState(false);
+
+  // Se houver viagens customizadas vindas da seleção, usa elas. Caso contrário, todas do mês.
+  const viagens = route.params?.viagensCustom || todasViagens;
+  
+  const totalKm = route.params?.viagensCustom 
+    ? viagens.reduce((sum, v) => sum + v.distanciaKm, 0)
+    : totalKmPadrao;
+    
+  const totalReembolso = route.params?.viagensCustom
+    ? viagens.reduce((sum, v) => sum + v.valor, 0)
+    : totalReembolsoPadrao;
 
   const gerarPDF = async () => {
     setGerando(true);
     try {
-      const html = gerarHTML(viagensConfirmadas, mesAtual, totalKmMes, totalReembolsoMes, config);
+      const html = gerarHTML(viagens, mesAtual, totalKm, totalReembolso, config);
 
       if (Platform.OS === 'web') {
         // No navegador, criamos um Blob e abrimos em nova aba para imprimir apenas o relatório
@@ -61,23 +76,30 @@ export default function RelatorioScreen({ navigation }) {
   };
 
   const compartilharWhatsApp = async () => {
-    const mesFormatado = formatarMes(mesAtual);
-    const totalReembolso = formatarMoeda(totalReembolsoMes);
-    const totalKm = formatarKm(totalKmMes);
+    const msgReembolso = formatarMoeda(totalReembolso);
+    const msgKm = formatarKm(totalKm);
 
-    let mensagem = `*Relatório de Quilometragem - ${mesFormatado}*\n`;
-    mensagem += `_Safras & Cifras_\n\n`;
+    let mensagem = `🏢 *SAFRAS & CIFRAS*\n`;
+    mensagem += `📊 *Relatório de Quilometragem - ${mesFormatado}*\n\n`;
     mensagem += `📊 *Resumo:*\n`;
-    mensagem += `• Viagens: ${viagensConfirmadas.length}\n`;
-    mensagem += `• Distância: ${totalKm}\n`;
-    mensagem += `• Reembolso: *${totalReembolso}*\n\n`;
+    mensagem += `• Viagens: ${viagens.length}\n`;
+    mensagem += `• Distância: ${msgKm}\n`;
+    const totalLitros = config?.modoCalculo === 'consumo' ? (totalKm / (config.consumoMedio || 1)).toFixed(1) : null;
+    if (totalLitros) {
+      mensagem += `• Consumo: ${totalLitros} Litros\n`;
+    }
+    mensagem += `• Reembolso: *${msgReembolso}*\n\n`;
     mensagem += `🚗 *Detalhes:*\n`;
 
-    viagensConfirmadas.forEach(v => {
+    viagens.slice(0, 15).forEach(v => {
       const data = formatarData(v.inicio);
       const desc = v.descricao ? ` (${v.descricao})` : '';
       mensagem += `• ${data}: ${v.localInicio} → ${v.localFim}${desc} - ${formatarKm(v.distanciaKm)}\n`;
     });
+
+    if (viagens.length > 15) {
+      mensagem += `\n...e mais ${viagens.length - 15} trajetos (veja PDF completo).`;
+    }
 
     const url = `whatsapp://send?text=${encodeURIComponent(mensagem)}`;
     const urlWeb = `https://wa.me/?text=${encodeURIComponent(mensagem)}`;
@@ -113,30 +135,36 @@ export default function RelatorioScreen({ navigation }) {
 
         {/* Card de prévia */}
         <View style={estilos.cardPrevia}>
-          <View style={estilos.cardPreviaIcone}>
-            <Ionicons name="document-text" size={32} color={cores.primario} />
-          </View>
+          <Image 
+            source={{ uri: 'https://s.criacaostatic.cc/safrasecifraswng5tdg0/uploads/elementor/thumbs/Logo-Safras-Cifras_Preto-scaled-rjjysb7a3posnup5alh9kcof83jcfvb2evxnsvanbo.png' }}
+            style={{ width: 120, height: 35, tintColor: '#FFFFFF', marginBottom: 12 }}
+            resizeMode="contain"
+          />
           <Text style={estilos.cardPreviaTitulo}>Relatório de {mesFormatado}</Text>
-          <Text style={estilos.cardPreviaSub}>Safras & Cifras — Reembolso de Combustível</Text>
+          <Text style={estilos.cardPreviaSub}>Reembolso de Combustível</Text>
 
           <View style={estilos.cardPreviaDivisor} />
 
           <View style={estilos.cardPreviaStats}>
             <View style={estilos.stat}>
-              <Text style={estilos.statValor}>{viagensConfirmadas.length}</Text>
-              <Text style={estilos.statLabel}>viagens</Text>
-            </View>
-            <View style={estilos.statDivisor} />
-            <View style={estilos.stat}>
-              <Text style={estilos.statValor}>{formatarKm(totalKmMes)}</Text>
+              <Text style={estilos.statValor}>{formatarKm(totalKm)}</Text>
               <Text style={estilos.statLabel}>percorridos</Text>
             </View>
             <View style={estilos.statDivisor} />
+            {config?.modoCalculo === 'consumo' && (
+              <>
+                <View style={estilos.stat}>
+                  <Text style={estilos.statValor}>{(totalKm / (config.consumoMedio || 1)).toFixed(1)}L</Text>
+                  <Text style={estilos.statLabel}>consumo</Text>
+                </View>
+                <View style={estilos.statDivisor} />
+              </>
+            )}
             <View style={estilos.stat}>
               <Text style={[estilos.statValor, { color: cores.primario }]}>
-                {formatarMoeda(totalReembolsoMes)}
+                {formatarMoeda(totalReembolso)}
               </Text>
-              <Text style={estilos.statLabel}>a reembolsar</Text>
+              <Text style={estilos.statLabel}>reembolso</Text>
             </View>
           </View>
         </View>
@@ -161,20 +189,20 @@ export default function RelatorioScreen({ navigation }) {
         </View>
 
         {/* Aviso se não tiver viagens */}
-        {viagensConfirmadas.length === 0 && (
+        {viagens.length === 0 && (
           <View style={estilos.aviso}>
             <Ionicons name="information-circle-outline" size={20} color={cores.aviso} />
             <Text style={estilos.avisoTexto}>
-              Não há viagens confirmadas em {mesFormatado}. Classifique os trajetos pendentes antes de exportar.
+              Não há trajetos para exportar.
             </Text>
           </View>
         )}
 
         {/* Botão de exportar PDF */}
         <TouchableOpacity
-          style={[estilos.botaoExportar, (gerando || viagensConfirmadas.length === 0) && estilos.botaoDesabilitado]}
+          style={[estilos.botaoExportar, (gerando || viagens.length === 0) && estilos.botaoDesabilitado]}
           onPress={gerarPDF}
-          disabled={gerando || viagensConfirmadas.length === 0}
+          disabled={gerando || viagens.length === 0}
           activeOpacity={0.8}
         >
           {gerando ? (
@@ -189,9 +217,9 @@ export default function RelatorioScreen({ navigation }) {
 
         {/* Botão de WhatsApp */}
         <TouchableOpacity
-          style={[estilos.botaoWhatsApp, (viagensConfirmadas.length === 0) && estilos.botaoDesabilitado]}
+          style={[estilos.botaoWhatsApp, (viagens.length === 0) && estilos.botaoDesabilitado]}
           onPress={compartilharWhatsApp}
-          disabled={viagensConfirmadas.length === 0}
+          disabled={viagens.length === 0}
           activeOpacity={0.8}
         >
           <Ionicons name="logo-whatsapp" size={22} color={cores.branco} />
@@ -206,9 +234,15 @@ export default function RelatorioScreen({ navigation }) {
 // ─── Geração do HTML do PDF ───────────────────────────────────────────────────
 const gerarHTML = (viagens, mes, totalKm, totalValor, config) => {
   const mesFormatado = formatarMes(mes);
-  const modoCalculo = config?.modoCalculo === 'valor_km'
-    ? `R$ ${config.valorPorKm}/km`
-    : `${config?.consumoMedio} km/L × R$ ${config?.precoCombustivel}/L`;
+  const totalLitros = config?.modoCalculo === 'consumo' ? (totalKm / (config.consumoMedio || 1)).toFixed(2) : null;
+  
+  const modoCalculoDesc = config?.modoCalculo === 'valor_km'
+    ? `<strong>R$ ${config.valorPorKm}/km</strong>`
+    : `<strong>${config?.consumoMedio} km/L</strong> (R$ ${config?.precoCombustivel}/L)`;
+
+  const resumoMetodo = config?.modoCalculo === 'consumo'
+    ? `Consumo estimado de <strong>${totalLitros} litros</strong> para o período.`
+    : `Cálculo baseado em valor fixo por quilômetro rodado.`;
 
   const linhasViagens = viagens.map((v, i) => `
     <tr style="background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'}">
@@ -264,11 +298,11 @@ const gerarHTML = (viagens, mes, totalKm, totalValor, config) => {
     </head>
     <body>
       <div class="header">
-        <div class="header-title">
-          <h1>Relatório de Quilometragem</h1>
-          <p>Safras &amp; Cifras Goiânia</p>
+        <div class="logo-container">
+          <img src="https://s.criacaostatic.cc/safrasecifraswng5tdg0/uploads/elementor/thumbs/Logo-Safras-Cifras_Preto-scaled-rjjysb7a3posnup5alh9kcof83jcfvb2evxnsvanbo.png" style="height: 50px;" />
         </div>
         <div class="header-date">
+          <h1>Relatório de Quilometragem</h1>
           <strong>Período:</strong> ${mesFormatado}<br/>
           <strong>Gerado em:</strong> ${new Date().toLocaleDateString('pt-BR')}
         </div>
@@ -277,20 +311,27 @@ const gerarHTML = (viagens, mes, totalKm, totalValor, config) => {
       <div class="totais">
         <div class="total-card">
           <span class="valor">${viagens.length}</span>
-          <span class="label">Viagens confirmadas</span>
+          <span class="label">Viagens</span>
         </div>
         <div class="total-card">
           <span class="valor">${formatarKm(totalKm)}</span>
-          <span class="label">Distância total</span>
+          <span class="label">Distância</span>
         </div>
+        ${totalLitros ? `
+        <div class="total-card">
+          <span class="valor">${totalLitros} L</span>
+          <span class="label">Combustível</span>
+        </div>
+        ` : ''}
         <div class="total-card">
           <span class="valor" style="color: #10b981">${formatarMoeda(totalValor)}</span>
-          <span class="label">Valor a reembolsar</span>
+          <span class="label">Reembolso</span>
         </div>
       </div>
 
       <div class="modo-box">
-        <strong>Método de cálculo:</strong> ${modoCalculo}
+        Método: ${modoCalculoDesc}<br/>
+        ${resumoMetodo}
       </div>
 
       <table>
