@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList,
-  TouchableOpacity, ScrollView, StatusBar,
+  TouchableOpacity, ScrollView, StatusBar, Modal, TextInput, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,8 +16,16 @@ import { cores, tipografia, espacamento, bordas, sombras } from '../utils/theme'
 import { formatarMoeda, formatarKm, formatarData, formatarHora, formatarMes } from '../utils/calculos';
 
 export default function HistoricoScreen({ navigation }) {
-  const { mesAtual, setMesAtual, viagensConfirmadas, totalKmMes, totalReembolsoMes } = useApp();
+  const { 
+    mesAtual, setMesAtual, viagensConfirmadas, totalKmMes, totalReembolsoMes,
+    editarViagem, excluirViagem 
+  } = useApp();
   const [mesesDisponiveis, setMesesDisponiveis] = useState([]);
+  
+  // Estados para edição
+  const [modalVisivel, setModalVisivel] = useState(false);
+  const [viagemEdicao, setViagemEdicao] = useState(null);
+  const [novaDescricao, setNovaDescricao] = useState('');
 
   useEffect(() => {
     carregarMeses();
@@ -25,20 +33,58 @@ export default function HistoricoScreen({ navigation }) {
 
   const carregarMeses = async () => {
     const meses = await Database.buscarMesesDisponiveis();
-    // Garante que o mês atual aparece mesmo sem viagens
     const mesAtu = new Date().toISOString().slice(0, 7);
     if (!meses.includes(mesAtu)) meses.unshift(mesAtu);
     setMesesDisponiveis(meses);
   };
 
+  const abrirEdicao = (viagem) => {
+    setViagemEdicao(viagem);
+    setNovaDescricao(viagem.descricao || '');
+    setModalVisivel(true);
+  };
+
+  const salvarEdicao = async () => {
+    if (!viagemEdicao) return;
+    await Database.atualizarViagem(viagemEdicao.id, {
+      descricao: novaDescricao,
+      valor: viagemEdicao.valor,
+      classificacao: 'trabalho',
+    });
+    editarViagem(viagemEdicao.id, { descricao: novaDescricao });
+    setModalVisivel(false);
+  };
+
+  const handleExcluir = () => {
+    Alert.alert(
+      'Excluir Viagem',
+      'Tem certeza que deseja remover esta viagem permanentemente?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Excluir', 
+          style: 'destructive',
+          onPress: async () => {
+            await Database.excluirViagem(viagemEdicao.id);
+            excluirViagem(viagemEdicao.id);
+            setModalVisivel(false);
+          }
+        },
+      ]
+    );
+  };
+
   const renderItem = ({ item: viagem, index }) => (
     <View style={[estilos.itemViagem, index === 0 && { marginTop: 0 }]}>
       <View style={estilos.itemData}>
+        <Text style={estilos.itemSemana}>
+          {new Date(viagem.inicio).toLocaleDateString('pt-BR', { weekday: 'short' }).toUpperCase()}
+        </Text>
         <Text style={estilos.itemDia}>
           {new Date(viagem.inicio).getDate().toString().padStart(2, '0')}
         </Text>
         <Text style={estilos.itemMes}>
-          {new Date(viagem.inicio).toLocaleDateString('pt-BR', { month: 'short' })}
+          {new Date(viagem.inicio).toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase()}
         </Text>
       </View>
 
@@ -49,11 +95,22 @@ export default function HistoricoScreen({ navigation }) {
         <Text style={estilos.itemHorario}>
           {formatarHora(viagem.inicio)} às {formatarHora(viagem.fim)}
         </Text>
+        {viagem.descricao && (
+          <Text style={estilos.itemDescricao} numberOfLines={2}>
+            {viagem.descricao}
+          </Text>
+        )}
       </View>
 
       <View style={estilos.itemValores}>
         <Text style={estilos.itemKm}>{formatarKm(viagem.distanciaKm)}</Text>
         <Text style={estilos.itemReais}>{formatarMoeda(viagem.valor)}</Text>
+        <TouchableOpacity 
+          style={estilos.botaoEditarItem}
+          onPress={() => abrirEdicao(viagem)}
+        >
+          <Ionicons name="create-outline" size={18} color={cores.cinzaTexto} />
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -129,6 +186,60 @@ export default function HistoricoScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      {/* Modal de Edição */}
+      <Modal
+        visible={modalVisivel}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalVisivel(false)}
+      >
+        <View style={estilos.modalOverlay}>
+          <View style={estilos.modalContainer}>
+            <View style={estilos.modalHeader}>
+              <Text style={estilos.modalTitulo}>Editar Viagem</Text>
+              <TouchableOpacity onPress={() => setModalVisivel(false)}>
+                <Ionicons name="close" size={24} color={cores.texto} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={estilos.modalCorpo}>
+              <Text style={estilos.labelInput}>Descrição do motivo</Text>
+              <TextInput
+                style={estilos.input}
+                placeholder="Ex: Visita ao cliente X..."
+                placeholderTextColor={cores.cinzaMedio}
+                value={novaDescricao}
+                onChangeText={setNovaDescricao}
+                multiline
+              />
+              
+              <View style={estilos.infoViagemCurta}>
+                <Text style={estilos.infoTextoCurto}>
+                  {viagemEdicao ? `${formatarData(viagemEdicao.inicio)} • ${formatarKm(viagemEdicao.distanciaKm)}` : ''}
+                </Text>
+              </View>
+            </View>
+
+            <View style={estilos.modalFooter}>
+              <TouchableOpacity 
+                style={estilos.botaoExcluir}
+                onPress={handleExcluir}
+              >
+                <Ionicons name="trash-outline" size={20} color={cores.erro} />
+                <Text style={estilos.botaoExcluirTexto}>Excluir</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={estilos.botaoSalvarEdicao}
+                onPress={salvarEdicao}
+              >
+                <Text style={estilos.botaoSalvarTexto}>Salvar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -160,7 +271,7 @@ const estilos = StyleSheet.create({
   botaoRelatorioTexto: {
     fontSize: tipografia.pequeno,
     color: cores.primario,
-    fontWeight: tipografia.semibold,
+    fontWeight: tipografia.semi,
   },
 
   seletorMes: {
@@ -183,7 +294,7 @@ const estilos = StyleSheet.create({
   chipMesTexto: {
     fontSize: tipografia.pequeno,
     color: cores.textoSecundario,
-    fontWeight: tipografia.medio,
+    fontWeight: tipografia.med,
   },
   chipMesTextoSelecionado: {
     color: '#0F172A', // Texto escuro no botão cyan
@@ -232,8 +343,14 @@ const estilos = StyleSheet.create({
   },
   itemData: {
     alignItems: 'center',
-    width: 36,
+    width: 42,
     marginRight: espacamento.sm,
+  },
+  itemSemana: {
+    fontSize: 9,
+    color: cores.cinzaTexto,
+    fontWeight: tipografia.bold,
+    marginBottom: -2,
   },
   itemDia: {
     fontSize: tipografia.grande,
@@ -242,9 +359,10 @@ const estilos = StyleSheet.create({
     lineHeight: 24,
   },
   itemMes: {
-    fontSize: tipografia.micro,
+    fontSize: 9,
     color: cores.cinzaTexto,
-    textTransform: 'uppercase',
+    fontWeight: tipografia.bold,
+    marginTop: -2,
   },
   itemInfo: { flex: 1, marginRight: espacamento.sm },
   itemRota: {
@@ -256,6 +374,13 @@ const estilos = StyleSheet.create({
   itemHorario: {
     fontSize: tipografia.micro,
     color: cores.cinzaTexto,
+    marginBottom: 4,
+  },
+  itemDescricao: {
+    fontSize: tipografia.micro,
+    color: cores.textoSecundario,
+    fontStyle: 'italic',
+    lineHeight: 14,
   },
   itemValores: { alignItems: 'flex-end' },
   itemKm: {
@@ -278,12 +403,103 @@ const estilos = StyleSheet.create({
   },
   vazioTitulo: {
     fontSize: tipografia.medio,
-    fontWeight: tipografia.semibold,
+    fontWeight: tipografia.semi,
     color: cores.texto,
   },
   vazioSub: {
     fontSize: tipografia.pequeno,
     color: cores.cinzaTexto,
     textAlign: 'center',
+  },
+
+  botaoEditarItem: {
+    marginTop: 8,
+    padding: 4,
+  },
+
+  // Estilos do Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    padding: espacamento.lg,
+  },
+  modalContainer: {
+    backgroundColor: cores.fundoCard,
+    borderRadius: bordas.lg,
+    overflow: 'hidden',
+    ...sombras.grande,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: espacamento.md,
+    borderBottomWidth: 1,
+    borderBottomColor: cores.cinzaClaro,
+  },
+  modalTitulo: {
+    fontSize: tipografia.medio,
+    fontWeight: tipografia.bold,
+    color: cores.texto,
+  },
+  modalCorpo: {
+    padding: espacamento.md,
+  },
+  labelInput: {
+    fontSize: tipografia.micro,
+    color: cores.cinzaTexto,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    fontWeight: tipografia.bold,
+  },
+  input: {
+    backgroundColor: cores.cinzaFundo,
+    borderRadius: bordas.md,
+    padding: espacamento.md,
+    color: cores.texto,
+    fontSize: tipografia.normal,
+    minHeight: 80,
+    textAlignVertical: 'top',
+    borderWidth: 1,
+    borderColor: cores.cinzaClaro,
+  },
+  infoViagemCurta: {
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  infoTextoCurto: {
+    fontSize: tipografia.micro,
+    color: cores.cinzaTexto,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    padding: espacamento.md,
+    gap: espacamento.sm,
+    borderTopWidth: 1,
+    borderTopColor: cores.cinzaClaro,
+  },
+  botaoExcluir: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: espacamento.md,
+  },
+  botaoExcluirTexto: {
+    color: cores.erro,
+    fontSize: tipografia.pequeno,
+    fontWeight: tipografia.semi,
+  },
+  botaoSalvarEdicao: {
+    flex: 1,
+    backgroundColor: cores.primario,
+    borderRadius: bordas.md,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  botaoSalvarTexto: {
+    color: '#0F172A',
+    fontSize: tipografia.normal,
+    fontWeight: tipografia.bold,
   },
 });

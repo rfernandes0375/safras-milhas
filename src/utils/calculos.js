@@ -143,9 +143,9 @@ export const formatarHora = (isoString) => {
 export const formatarData = (isoString) => {
   if (!isoString) return '';
   return new Date(isoString).toLocaleDateString('pt-BR', {
-    weekday: 'short',
     day: '2-digit',
     month: '2-digit',
+    year: 'numeric',
   });
 };
 

@@ -38,19 +38,19 @@ export const tipografia = {
   familia: 'System',
 
   // Tamanhos
-  micro: 11,
-  pequeno: 13,
-  normal: 15,
-  medio: 17,
-  grande: 20,
-  titulo: 24,
-  display: 32,
-  hero: 42,
+  micro: 10,
+  pequeno: 12,
+  normal: 14,
+  medio: 16,
+  grande: 18,
+  titulo: 22,
+  display: 28,
+  hero: 30,
 
-  // Pesos
-  regular: '400',
-  medio: '500',
-  semibold: '600',
+  // Pesos (Renomeados para evitar conflito com tamanhos)
+  reg: '400',
+  med: '500',
+  semi: '600',
   bold: '700',
   heavy: '800',
 };

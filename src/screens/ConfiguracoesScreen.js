@@ -126,7 +126,7 @@ export default function ConfiguracoesScreen() {
         <Secao titulo="Rastreamento" icone="radio-outline">
           <View style={estilos.infoItem}>
             <Ionicons name="checkmark-circle" size={16} color={cores.sucesso} />
-            <Text style={estilos.infoTexto}>Velocidade mínima para detectar viagem: 20 km/h</Text>
+            <Text style={estilos.infoTexto}>Velocidade mínima para detectar viagem: 12 km/h</Text>
           </View>
           <View style={estilos.infoItem}>
             <Ionicons name="checkmark-circle" size={16} color={cores.sucesso} />

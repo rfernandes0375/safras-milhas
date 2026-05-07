@@ -27,6 +27,7 @@ export const inicializar = async () => {
       classificacao TEXT,
       provavel_trabalho INTEGER DEFAULT 0,
       valor REAL DEFAULT 0,
+      descricao TEXT,
       criado_em TEXT DEFAULT (datetime('now'))
     );
     CREATE TABLE IF NOT EXISTS config (
@@ -40,8 +41,8 @@ export const salvarViagem = async (viagem) => {
   const id = `v_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
   const mesReferencia = viagem.inicio.slice(0, 7);
   await db.runAsync(
-    `INSERT INTO viagens (id,inicio,fim,mes_referencia,distancia_metros,distancia_km,local_inicio,local_fim,latitude_inicio,longitude_inicio,latitude_fim,longitude_fim,coordenadas,classificacao,provavel_trabalho,valor) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    [id, viagem.inicio, viagem.fim, mesReferencia, viagem.distanciaMetros, viagem.distanciaKm, viagem.localInicio||null, viagem.localFim||null, viagem.latInicio||null, viagem.lngInicio||null, viagem.latFim||null, viagem.lngFim||null, JSON.stringify(viagem.coordenadas||[]), null, viagem.provalTrabalho?1:0, viagem.valor||0]
+    `INSERT INTO viagens (id,inicio,fim,mes_referencia,distancia_metros,distancia_km,local_inicio,local_fim,latitude_inicio,longitude_inicio,latitude_fim,longitude_fim,coordenadas,classificacao,provavel_trabalho,valor,descricao) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [id, viagem.inicio, viagem.fim, mesReferencia, viagem.distanciaMetros, viagem.distanciaKm, viagem.localInicio||null, viagem.localFim||null, viagem.latInicio||null, viagem.lngInicio||null, viagem.latFim||null, viagem.lngFim||null, JSON.stringify(viagem.coordenadas||[]), null, viagem.provalTrabalho?1:0, viagem.valor||0, viagem.descricao||null]
   );
   return { id, mesReferencia, ...viagem };
 };
@@ -66,8 +67,22 @@ export const buscarViagemPorId = async (id) => {
   return row ? mapearViagem(row) : null;
 };
 
-export const classificarViagem = async (id, classificacao) => {
-  await db.runAsync(`UPDATE viagens SET classificacao = ? WHERE id = ?`, [classificacao, id]);
+export const classificarViagem = async (id, classificacao, descricao = null, valor = 0) => {
+  await db.runAsync(
+    `UPDATE viagens SET classificacao = ?, descricao = ?, valor = ? WHERE id = ?`,
+    [classificacao, descricao, valor, id]
+  );
+};
+
+export const atualizarViagem = async (id, { descricao, valor, classificacao }) => {
+  await db.runAsync(
+    `UPDATE viagens SET descricao = ?, valor = ?, classificacao = ? WHERE id = ?`,
+    [descricao, valor, classificacao, id]
+  );
+};
+
+export const excluirViagem = async (id) => {
+  await db.runAsync(`DELETE FROM viagens WHERE id = ?`, [id]);
 };
 
 export const salvarConfig = async (config) => {
@@ -104,5 +119,6 @@ const mapearViagem = (row) => ({
   classificacao: row.classificacao,
   provalTrabalho: row.provavel_trabalho === 1,
   valor: row.valor,
+  descricao: row.descricao,
   criadoEm: row.criado_em,
 });

@@ -11,6 +11,14 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Text } from 'react-native';
+
+// Desativar redimensionamento automático de fonte do sistema
+if (Text.defaultProps) {
+  Text.defaultProps.allowFontScaling = false;
+} else {
+  Text.defaultProps = { allowFontScaling: false };
+}
 
 import { AppProvider } from './src/context/AppContext';
 import DashboardScreen from './src/screens/DashboardScreen';

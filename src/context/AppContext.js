@@ -77,6 +77,7 @@ const VIAGENS_CONFIRMADAS_MOCK = [
     localFim: 'Banco Bradesco',
     classificacao: 'trabalho',
     valor: 12.09,
+    descricao: 'Depósito de cheques e retirada de extratos',
   }
 ];
 
@@ -86,13 +87,23 @@ export const AppProvider = ({ children }) => {
   const [mesAtual, setMesAtual] = useState(mesAtualStr);
   const [config, setConfig] = useState(CONFIG_PADRAO);
 
-  const classificarViagem = useCallback(async (id, classificacao) => {
+  const classificarViagem = useCallback(async (id, classificacao, descricao = '') => {
     const viagem = viagensPendentes.find(v => v.id === id);
     setViagensPendentes(prev => prev.filter(v => v.id !== id));
     if (classificacao === 'trabalho' && viagem) {
-      setViagensConfirmadas(prev => [{ ...viagem, classificacao: 'trabalho' }, ...prev]);
+      setViagensConfirmadas(prev => [{ ...viagem, classificacao: 'trabalho', descricao }, ...prev]);
     }
   }, [viagensPendentes]);
+
+  const editarViagem = useCallback(async (id, novosDados) => {
+    setViagensConfirmadas(prev => prev.map(v => 
+      v.id === id ? { ...v, ...novosDados } : v
+    ));
+  }, []);
+
+  const excluirViagem = useCallback(async (id) => {
+    setViagensConfirmadas(prev => prev.filter(v => v.id !== id));
+  }, []);
 
   const salvarConfig = useCallback(async (novaConfig) => {
     setConfig(prev => ({ ...prev, ...novaConfig }));
@@ -107,7 +118,7 @@ export const AppProvider = ({ children }) => {
       totalReembolsoMes: viagensConfirmadas.reduce((sum, v) => sum + (v.valor || 0), 0),
       totalPendentes: viagensPendentes.length,
       rastreamentoAtivo: true, viagemEmAndamento: null,
-      classificarViagem, salvarConfig, carregarViagens, carregando: false,
+      classificarViagem, editarViagem, excluirViagem, salvarConfig, carregarViagens, carregando: false,
     }}>
       {children}
     </AppContext.Provider>

@@ -11,7 +11,7 @@
 import React, { useRef, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, Animated, PanResponder,
-  Dimensions, TouchableOpacity, StatusBar,
+  Dimensions, TouchableOpacity, StatusBar, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,6 +27,7 @@ export default function TriagemScreen({ navigation }) {
   const { viagensPendentes, classificarViagem, totalReembolsoMes, config } = useApp();
   const [indiceAtual, setIndiceAtual] = useState(0);
   const [swipando, setSwipando] = useState(false);
+  const [descricao, setDescricao] = useState('');
 
   // Animações
   const posicao = useRef(new Animated.ValueXY()).current;
@@ -89,8 +90,10 @@ export default function TriagemScreen({ navigation }) {
     }).start(async () => {
       const viagem = viagensPendentes[indiceAtual];
       if (viagem) {
-        await classificarViagem(viagem.id, classificacao);
+        await classificarViagem(viagem.id, classificacao, descricao);
       }
+      
+      setDescricao('');
 
       // Avança para próximo card
       posicao.setValue({ x: 0, y: 0 });
@@ -198,7 +201,11 @@ export default function TriagemScreen({ navigation }) {
           </Animated.View>
 
           {/* Conteúdo do card */}
-          <CardViagem viagem={viagemAtual} />
+          <CardViagem 
+            viagem={viagemAtual} 
+            descricao={descricao}
+            setDescricao={setDescricao}
+          />
         </Animated.View>
       </View>
 
@@ -225,7 +232,7 @@ export default function TriagemScreen({ navigation }) {
 }
 
 // ─── Card de Viagem ───────────────────────────────────────────────────────────
-function CardViagem({ viagem }) {
+function CardViagem({ viagem, descricao, setDescricao }) {
   return (
     <View style={estilos.cardConteudo}>
       {/* Badge pré-classificação automática */}
@@ -281,6 +288,20 @@ function CardViagem({ viagem }) {
             </Text>
           </View>
           <Text style={estilos.horario}>{formatarHora(viagem.fim)}</Text>
+        </View>
+
+        {/* Campo de Descrição */}
+        <View style={estilos.descricaoContainer}>
+          <Text style={estilos.descricaoLabel}>Descrição da viagem (opcional)</Text>
+          <TextInput
+            style={estilos.descricaoInput}
+            placeholder="Ex: Visita ao cliente X, Banco, etc..."
+            placeholderTextColor={cores.cinzaTexto}
+            value={descricao}
+            onChangeText={setDescricao}
+            multiline
+            maxLength={100}
+          />
         </View>
       </View>
 
@@ -539,6 +560,32 @@ const estilos = StyleSheet.create({
     backgroundColor: cores.cinzaMedio,
     marginLeft: 13,
     marginVertical: 2,
+  },
+
+  // Descrição
+  descricaoContainer: {
+    marginTop: espacamento.md,
+    paddingTop: espacamento.md,
+    borderTopWidth: 1,
+    borderTopColor: cores.cinzaClaro,
+  },
+  descricaoLabel: {
+    fontSize: tipografia.micro,
+    color: cores.cinzaTexto,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  descricaoInput: {
+    backgroundColor: cores.cinzaFundo,
+    borderRadius: bordas.md,
+    padding: espacamento.sm,
+    fontSize: tipografia.pequeno,
+    color: cores.texto,
+    minHeight: 60,
+    textAlignVertical: 'top',
+    borderWidth: 1,
+    borderColor: cores.cinzaClaro,
   },
 
   // Footer do card

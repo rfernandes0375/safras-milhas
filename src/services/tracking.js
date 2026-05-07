@@ -5,7 +5,7 @@
  * para garantir funcionamento sem que o sistema iOS mate o processo.
  *
  * Lógica de detecção de viagem:
- * - Início: velocidade > 20 km/h detectada
+ * - Início: velocidade > 12 km/h detectada
  * - Fim: velocidade = 0 por mais de 2 minutos consecutivos
  * - Distância mínima: 500m (viagens menores são descartadas)
  */
@@ -60,8 +60,8 @@ const processarLocalizacao = async (local) => {
   const agora = timestamp || Date.now();
 
   if (!estadoViagem.emAndamento) {
-    // Detecta INÍCIO de viagem: velocidade > 20 km/h
-    if (velocidadeKmh > 20) {
+    // Detecta INÍCIO de viagem: velocidade > 12 km/h
+    if (velocidadeKmh > 12) {
       console.log('[Tracking] Início de viagem detectado —', velocidadeKmh.toFixed(1), 'km/h');
       estadoViagem.emAndamento = true;
       estadoViagem.inicio = new Date(agora).toISOString();

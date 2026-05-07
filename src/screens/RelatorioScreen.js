@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, StatusBar, ActivityIndicator, Alert,
+  TouchableOpacity, StatusBar, ActivityIndicator, Alert, Platform, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,23 +24,74 @@ export default function RelatorioScreen({ navigation }) {
     setGerando(true);
     try {
       const html = gerarHTML(viagensConfirmadas, mesAtual, totalKmMes, totalReembolsoMes, config);
-      const { uri } = await Print.printToFileAsync({ html, base64: false });
 
-      const podeCompartilhar = await Sharing.isAvailableAsync();
-      if (podeCompartilhar) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: `Relatório ${formatarMes(mesAtual)}`,
-          UTI: 'com.adobe.pdf',
-        });
+      if (Platform.OS === 'web') {
+        // No navegador, criamos um Blob e abrimos em nova aba para imprimir apenas o relatório
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const win = window.open(url, '_blank');
+        if (win) {
+          win.onload = () => {
+            win.print();
+            URL.revokeObjectURL(url);
+          };
+        } else {
+          Alert.alert('Bloqueador de Pop-ups', 'Por favor, permita pop-ups para visualizar o relatório.');
+        }
       } else {
-        Alert.alert('PDF gerado!', `Arquivo salvo em: ${uri}`);
+        // No celular (iOS/Android), gera o arquivo PDF real
+        const { uri } = await Print.printToFileAsync({ html, base64: false });
+        const podeCompartilhar = await Sharing.isAvailableAsync();
+        if (podeCompartilhar) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: `Relatório ${formatarMes(mesAtual)}`,
+            UTI: 'com.adobe.pdf',
+          });
+        } else {
+          Alert.alert('PDF gerado!', `Arquivo salvo em: ${uri}`);
+        }
       }
     } catch (error) {
       console.error('[Relatorio] Erro ao gerar PDF:', error);
-      Alert.alert('Erro', 'Não foi possível gerar o relatório. Tente novamente.');
+      Alert.alert('Erro', 'Não foi possível gerar o relatório.');
     } finally {
       setGerando(false);
+    }
+  };
+
+  const compartilharWhatsApp = async () => {
+    const mesFormatado = formatarMes(mesAtual);
+    const totalReembolso = formatarMoeda(totalReembolsoMes);
+    const totalKm = formatarKm(totalKmMes);
+
+    let mensagem = `*Relatório de Quilometragem - ${mesFormatado}*\n`;
+    mensagem += `_Safras & Cifras_\n\n`;
+    mensagem += `📊 *Resumo:*\n`;
+    mensagem += `• Viagens: ${viagensConfirmadas.length}\n`;
+    mensagem += `• Distância: ${totalKm}\n`;
+    mensagem += `• Reembolso: *${totalReembolso}*\n\n`;
+    mensagem += `🚗 *Detalhes:*\n`;
+
+    viagensConfirmadas.forEach(v => {
+      const data = formatarData(v.inicio);
+      const desc = v.descricao ? ` (${v.descricao})` : '';
+      mensagem += `• ${data}: ${v.localInicio} → ${v.localFim}${desc} - ${formatarKm(v.distanciaKm)}\n`;
+    });
+
+    const url = `whatsapp://send?text=${encodeURIComponent(mensagem)}`;
+    const urlWeb = `https://wa.me/?text=${encodeURIComponent(mensagem)}`;
+
+    try {
+      const podeAbrir = await Linking.canOpenURL(url);
+      if (podeAbrir) {
+        await Linking.openURL(url);
+      } else {
+        // Fallback para WhatsApp Web se o app não estiver instalado ou for navegador
+        await Linking.openURL(urlWeb);
+      }
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível abrir o WhatsApp.');
     }
   };
 
@@ -97,6 +148,7 @@ export default function RelatorioScreen({ navigation }) {
             'Cabeçalho com nome e período',
             'Lista completa de viagens de trabalho',
             'Origem, destino, horário e km por viagem',
+            'Descrição detalhada da viagem',
             'Valor de reembolso por viagem',
             'Total de km e valor do mês',
             'Configuração usada no cálculo',
@@ -118,7 +170,7 @@ export default function RelatorioScreen({ navigation }) {
           </View>
         )}
 
-        {/* Botão de exportar */}
+        {/* Botão de exportar PDF */}
         <TouchableOpacity
           style={[estilos.botaoExportar, (gerando || viagensConfirmadas.length === 0) && estilos.botaoDesabilitado]}
           onPress={gerarPDF}
@@ -129,10 +181,21 @@ export default function RelatorioScreen({ navigation }) {
             <ActivityIndicator color={cores.branco} />
           ) : (
             <>
-              <Ionicons name="share-outline" size={22} color={cores.branco} />
+              <Ionicons name="document-outline" size={22} color={cores.branco} />
               <Text style={estilos.botaoExportarTexto}>Exportar PDF</Text>
             </>
           )}
+        </TouchableOpacity>
+
+        {/* Botão de WhatsApp */}
+        <TouchableOpacity
+          style={[estilos.botaoWhatsApp, (viagensConfirmadas.length === 0) && estilos.botaoDesabilitado]}
+          onPress={compartilharWhatsApp}
+          disabled={viagensConfirmadas.length === 0}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="logo-whatsapp" size={22} color={cores.branco} />
+          <Text style={estilos.botaoExportarTexto}>Enviar via WhatsApp</Text>
         </TouchableOpacity>
 
       </ScrollView>
@@ -148,13 +211,13 @@ const gerarHTML = (viagens, mes, totalKm, totalValor, config) => {
     : `${config?.consumoMedio} km/L × R$ ${config?.precoCombustivel}/L`;
 
   const linhasViagens = viagens.map((v, i) => `
-    <tr style="background: ${i % 2 === 0 ? '#f8f9fa' : '#fff'}">
-      <td>${formatarData(v.inicio)}</td>
-      <td>${formatarHora(v.inicio)} – ${formatarHora(v.fim)}</td>
-      <td>${v.localInicio || '—'}</td>
-      <td>${v.localFim || '—'}</td>
-      <td style="text-align:center">${formatarKm(v.distanciaKm)}</td>
-      <td style="text-align:right;color:#1A73E8;font-weight:600">${formatarMoeda(v.valor)}</td>
+    <tr style="background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'}">
+      <td class="col-data">${formatarData(v.inicio)}</td>
+      <td class="col-hora">${formatarHora(v.inicio)} – ${formatarHora(v.fim)}</td>
+      <td class="col-trajeto">${v.localInicio || '—'} <br/> <small>até</small> ${v.localFim || '—'}</td>
+      <td class="col-desc">${v.descricao || '<span class="empty">—</span>'}</td>
+      <td class="col-km">${formatarKm(v.distanciaKm)}</td>
+      <td class="col-valor">${formatarMoeda(v.valor)}</td>
     </tr>
   `).join('');
 
@@ -163,55 +226,80 @@ const gerarHTML = (viagens, mes, totalKm, totalValor, config) => {
     <html lang="pt-BR">
     <head>
       <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Relatório de Quilometragem — ${mesFormatado}</title>
       <style>
+        @page { margin: 1.0cm; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, Arial, sans-serif; color: #202124; padding: 40px; }
-        .header { border-bottom: 3px solid #1A73E8; padding-bottom: 20px; margin-bottom: 30px; }
-        .header h1 { font-size: 24px; color: #1A73E8; margin-bottom: 4px; }
-        .header p { color: #5F6368; font-size: 14px; }
-        .totais { display: flex; gap: 20px; margin-bottom: 30px; }
-        .total-card { flex: 1; background: #f8f9fa; border-radius: 12px; padding: 16px; text-align: center; border: 1px solid #e0e0e0; }
-        .total-card .valor { font-size: 22px; font-weight: 700; color: #1A73E8; }
-        .total-card .label { font-size: 12px; color: #5F6368; margin-top: 4px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 13px; }
-        th { background: #1A73E8; color: white; padding: 10px 12px; text-align: left; }
-        td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; }
-        .footer { font-size: 12px; color: #9E9E9E; border-top: 1px solid #e0e0e0; padding-top: 16px; }
-        .modo { font-size: 12px; color: #5F6368; margin-bottom: 20px; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.5; padding-top: 50px; }
+        
+        .debug-header { position: absolute; top: 0; left: 0; right: 0; background: #FF3B30; color: white; text-align: center; font-size: 10px; padding: 5px; font-weight: bold; }
+
+        .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #0891b2; padding-bottom: 20px; margin-bottom: 30px; }
+        .header-title h1 { font-size: 24px; color: #0891b2; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+        .header-title p { font-size: 14px; color: #64748b; font-weight: 500; }
+        .header-date { text-align: right; font-size: 13px; color: #64748b; }
+
+        .totais { display: flex; gap: 16px; margin-bottom: 30px; }
+        .total-card { flex: 1; background: #f1f5f9; border-radius: 12px; padding: 16px; text-align: center; border: 1px solid #e2e8f0; }
+        .total-card .valor { font-size: 22px; font-weight: 800; color: #0891b2; display: block; }
+        .total-card .label { font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 700; margin-top: 4px; letter-spacing: 0.5px; }
+
+        .modo-box { font-size: 12px; color: #475569; background: #f8fafc; padding: 10px 15px; border-radius: 8px; border-left: 5px solid #0891b2; margin-bottom: 25px; display: inline-block; }
+
+        table { width: 100%; border-collapse: collapse; margin-bottom: 40px; font-size: 11px; }
+        th { background: #0891b2; color: white; padding: 14px 10px; text-align: left; text-transform: uppercase; font-weight: 700; font-size: 10px; letter-spacing: 0.5px; }
+        td { padding: 12px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+        
+        .col-data { width: 90px; font-weight: 600; }
+        .col-hora { width: 100px; color: #64748b; }
+        .col-trajeto { width: 200px; font-weight: 500; }
+        .col-trajeto small { color: #94a3b8; font-size: 9px; text-transform: uppercase; }
+        .col-desc { font-style: italic; color: #334155; min-width: 150px; }
+        .col-km { width: 60px; text-align: center; font-weight: 600; }
+        .col-valor { width: 100px; text-align: right; font-weight: 700; color: #0891b2; }
+        .empty { color: #cbd5e1; }
+
+        .footer { border-top: 2px solid #e2e8f0; padding-top: 20px; text-align: center; font-size: 11px; color: #94a3b8; }
+        .footer strong { color: #64748b; }
       </style>
     </head>
     <body>
       <div class="header">
-        <h1>Relatório de Quilometragem</h1>
-        <p>Safras &amp; Cifras Goiânia · ${mesFormatado}</p>
+        <div class="header-title">
+          <h1>Relatório de Quilometragem</h1>
+          <p>Safras &amp; Cifras Goiânia</p>
+        </div>
+        <div class="header-date">
+          <strong>Período:</strong> ${mesFormatado}<br/>
+          <strong>Gerado em:</strong> ${new Date().toLocaleDateString('pt-BR')}
+        </div>
       </div>
 
       <div class="totais">
         <div class="total-card">
-          <div class="valor">${viagens.length}</div>
-          <div class="label">Viagens de trabalho</div>
+          <span class="valor">${viagens.length}</span>
+          <span class="label">Viagens confirmadas</span>
         </div>
         <div class="total-card">
-          <div class="valor">${formatarKm(totalKm)}</div>
-          <div class="label">Total percorrido</div>
+          <span class="valor">${formatarKm(totalKm)}</span>
+          <span class="label">Distância total</span>
         </div>
         <div class="total-card">
-          <div class="valor" style="color:#34A853">${formatarMoeda(totalValor)}</div>
-          <div class="label">Total a reembolsar</div>
+          <span class="valor" style="color: #10b981">${formatarMoeda(totalValor)}</span>
+          <span class="label">Valor a reembolsar</span>
         </div>
       </div>
 
-      <p class="modo">Cálculo: ${modoCalculo}</p>
+      <div class="modo-box">
+        <strong>Método de cálculo:</strong> ${modoCalculo}
+      </div>
 
       <table>
         <thead>
           <tr>
             <th>Data</th>
             <th>Horário</th>
-            <th>Origem</th>
-            <th>Destino</th>
+            <th>Itinerário</th>
+            <th>Descrição/Motivo</th>
             <th style="text-align:center">Km</th>
             <th style="text-align:right">Valor</th>
           </tr>
@@ -220,7 +308,8 @@ const gerarHTML = (viagens, mes, totalKm, totalValor, config) => {
       </table>
 
       <div class="footer">
-        Gerado pelo app Safras Milhas · ${new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' })}
+        Este documento é um registro oficial de deslocamentos para fins de reembolso.<br/>
+        Gerado pelo sistema <strong>Safras Milhas v1.0.5</strong>
       </div>
     </body>
     </html>
@@ -358,6 +447,18 @@ const estilos = StyleSheet.create({
   botaoExportar: {
     marginHorizontal: espacamento.md,
     backgroundColor: cores.primario,
+    borderRadius: bordas.lg,
+    paddingVertical: espacamento.md,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    ...sombras.grande,
+    marginBottom: espacamento.sm,
+  },
+  botaoWhatsApp: {
+    marginHorizontal: espacamento.md,
+    backgroundColor: '#25D366',
     borderRadius: bordas.lg,
     paddingVertical: espacamento.md,
     flexDirection: 'row',
