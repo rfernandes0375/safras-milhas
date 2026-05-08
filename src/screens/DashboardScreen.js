@@ -54,38 +54,37 @@ export default function DashboardScreen({ navigation }) {
             />
           </View>
           <TouchableOpacity 
-          style={estilos.statusBadge}
-          onPress={() => {
-            if (!rastreamentoAtivo) {
-              inicializarApp(); // Tenta reinicializar tudo (GPS e Permissões)
-            }
-          }}
-          activeOpacity={0.7}
-        >
-          <View style={estilos.rastreamentoIndicador}>
-            <View style={[
-              estilos.rastreioPonto,
-              rastreamentoAtivo && estilos.rastreioPontoAtivo
-            ]} />
-            <Text style={estilos.rastreaioTexto}>
-              {rastreamentoAtivo ? 'Rastreando' : 'Pausado (Tocar para Iniciar)'}
-            </Text>
-          </View>
-        </TouchableOpacity>
-            {viagemEmCurso && (
-              <TouchableOpacity 
-                style={estilos.botaoPararManual}
-                onPress={async () => {
-                  const parou = await pararViagem();
-                  if (parou) {
-                    Alert.alert('Sucesso', 'Viagem encerrada e enviada para a Triagem!');
-                  }
-                }}
-              >
-                <Ionicons name="stop-circle" size={18} color={cores.branco} />
-              </TouchableOpacity>
-            )}
-          </View>
+            style={estilos.statusBadge}
+            onPress={() => {
+              if (!rastreamentoAtivo) {
+                inicializarApp(); // Tenta reinicializar tudo (GPS e Permissões)
+              }
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={estilos.rastreamentoIndicador}>
+              <View style={[
+                estilos.rastreioPonto,
+                rastreamentoAtivo && estilos.rastreioPontoAtivo
+              ]} />
+              <Text style={estilos.rastreaioTexto}>
+                {rastreamentoAtivo ? 'Rastreando' : 'Pausado (Tocar para Iniciar)'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+          {viagemEmCurso && (
+            <TouchableOpacity 
+              style={estilos.botaoPararManual}
+              onPress={async () => {
+                const parou = await pararViagem();
+                if (parou) {
+                  Alert.alert('Sucesso', 'Viagem encerrada e enviada para a Triagem!');
+                }
+              }}
+            >
+              <Ionicons name="stop-circle" size={18} color={cores.branco} />
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={estilos.headerRow}>
