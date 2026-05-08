@@ -222,9 +222,9 @@ export const iniciarRastreamento = async ({ onViagemDetectada, onViagemAtualizad
       const ativa = await Location.hasStartedLocationUpdatesAsync(TASK_RASTREAMENTO).catch(() => false);
       if (!ativa) {
         await Location.startLocationUpdatesAsync(TASK_RASTREAMENTO, {
-          accuracy: Location.Accuracy.BestForNavigation,
-          distanceInterval: 20,
-          deferredUpdatesInterval: 10000,
+          accuracy: Location.Accuracy.Balanced, // Mudado de Best para Balanced para testar compatibilidade
+          distanceInterval: 50,
+          deferredUpdatesInterval: 0, // Desativado para simplificar
           showsBackgroundLocationIndicator: true,
           pausesUpdatesAutomatically: false,
           foregroundService: {
