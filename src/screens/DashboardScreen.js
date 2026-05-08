@@ -116,23 +116,20 @@ export default function DashboardScreen({ navigation }) {
               const dias = [];
               const nomesDias = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
               
-              // Gera os 7 dias da semana (Domingo a Sábado)
               for (let i = 0; i < 7; i++) {
                 const d = new Date();
-                // Calcula a data de cada dia da semana atual (Domingo a Sábado)
                 d.setDate(hoje.getDate() - (diaSemanaAtual - i));
                 
                 const diaLocal = d.getDate();
                 const mesLocal = d.getMonth();
                 const anoLocal = d.getFullYear();
 
-                // Soma KM filtrando pela data local (evita erro de fuso horário)
                 const kmDia = viagensConfirmadas
                   .filter(v => {
-                    const dataV = new Date(v.inicio);
-                    return dataV.getDate() === diaLocal && 
-                           dataV.getMonth() === mesLocal && 
-                           dataV.getFullYear() === anoLocal;
+                    const dV = new Date(v.inicio);
+                    return dV.getFullYear() === anoLocal && 
+                           dV.getMonth() === mesLocal && 
+                           dV.getDate() === diaLocal;
                   })
                   .reduce((acc, v) => acc + (v.distanciaKm || 0), 0);
 
@@ -143,7 +140,7 @@ export default function DashboardScreen({ navigation }) {
                 });
               }
               
-              const maxKm = Math.max(...dias.map(d => d.km), 10);
+              const maxKm = Math.max(...dias.map(d => d.km), 1);
               
               return dias.map((dia, idx) => (
                 <View key={idx} style={estilos.colunaGrafico}>
