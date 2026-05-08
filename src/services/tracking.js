@@ -13,7 +13,8 @@
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import Constants from 'expo-constants';
-import { salvarEstadoRastreamento, buscarEstadoRastreamento, limparEstadoRastreamento } from './database';
+import { Alert } from 'react-native';
+import { salvarEstadoRastreamento, buscarEstadoRastreamento, limparEstadoRastreamento, adicionarPontoTemporario, buscarPontosTemporarios, limparPontosTemporarios, finalizarViagemNoBanco } from './database';
 import { calcularDistanciaKm, eProvavelTrabalho } from '../utils/calculos';
 
 // Nome da task registrada no sistema iOS
@@ -209,40 +210,44 @@ export const iniciarRastreamento = async ({ onViagemDetectada, onViagemAtualizad
   }
 
   const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
-  if (fgStatus !== 'granted') return false;
+  if (fgStatus !== 'granted') {
+    Alert.alert('Permissão Necessária', 'O app precisa de acesso à localização "Durante o Uso" para funcionar. Verifique nos Ajustes.');
+    return false;
+  }
 
-  // TENTA usar o modo Background mesmo no Expo Go (melhoria de robustez)
   try {
     const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
     
-    // Se temos permissão de background, tentamos o modo "Real"
     if (bgStatus === 'granted') {
       const ativa = await Location.hasStartedLocationUpdatesAsync(TASK_RASTREAMENTO).catch(() => false);
       if (!ativa) {
         await Location.startLocationUpdatesAsync(TASK_RASTREAMENTO, {
           accuracy: Location.Accuracy.BestForNavigation,
-          distanceInterval: 30, // Reduzido para pegar mais detalhes
-          deferredUpdatesInterval: 15000,
-          showsBackgroundLocationIndicator: true, // Força a "Bolha Azul" no iOS
+          distanceInterval: 20,
+          deferredUpdatesInterval: 10000,
+          showsBackgroundLocationIndicator: true,
+          pausesUpdatesAutomatically: false,
           foregroundService: {
             notificationTitle: 'Safras Milhas',
             notificationBody: 'Rastreamento ativo',
-          },
-          pausesUpdatesAutomatically: false,
+          }
         });
       }
       return true;
+    } else {
+      console.log('[Tracking] Permissão de Background não concedida.');
+      // Não bloqueia, tenta usar o Foreground watch como fallback
     }
   } catch (err) {
-    console.warn('[Tracking] Falha ao iniciar modo background:', err.message);
+    console.warn('[Tracking] Erro ao iniciar modo background:', err.message);
+    Alert.alert('Aviso de GPS', 'O modo de segundo plano falhou. O app só rastreará com a tela aberta. Erro: ' + err.message);
   }
 
-  // Fallback para Foreground se o background for negado ou falhar no Expo Go
   if (foregroundSubscription) foregroundSubscription.remove();
   foregroundSubscription = await Location.watchPositionAsync(
     {
       accuracy: Location.Accuracy.BestForNavigation,
-      distanceInterval: 30,
+      distanceInterval: 20,
     },
     (location) => processarLocalizacao(location)
   );
