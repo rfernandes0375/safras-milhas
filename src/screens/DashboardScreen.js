@@ -145,8 +145,7 @@ export default function DashboardScreen({ navigation }) {
                     <View style={[
                       estilos.barra,
                       { height: `${Math.min((dia.km / maxKm) * 100, 100)}%` },
-                      dia.hoje && { backgroundColor: cores.primario },
-                      !dia.hoje && dia.km > 0 && { backgroundColor: cores.primario, opacity: 0.5 }
+                      (dia.hoje || dia.km > 0) && { backgroundColor: cores.primario }
                     ]} />
                   </View>
                   <Text style={[estilos.diaTexto, dia.hoje && { color: cores.primario, fontWeight: 'bold' }]}>
