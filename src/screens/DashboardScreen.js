@@ -108,32 +108,51 @@ export default function DashboardScreen({ navigation }) {
 
         {/* ─── Gráfico Semanal ────────────────────────────────────────── */}
         <View style={estilos.graficoContainer}>
-          <Text style={estilos.graficoTitulo}>KM nos últimos 7 dias</Text>
+          <Text style={estilos.graficoTitulo}>KM na semana atual</Text>
           <View style={estilos.graficoBarras}>
             {(() => {
               const hoje = new Date();
+              const diaSemanaAtual = hoje.getDay(); // 0 = Domingo, 5 = Sexta
               const dias = [];
               const nomesDias = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
               
-              for (let i = 6; i >= 0; i--) {
+              // Gera os 7 dias da semana (Domingo a Sábado)
+              for (let i = 0; i < 7; i++) {
                 const d = new Date();
-                d.setDate(hoje.getDate() - i);
-                const dataStr = d.toISOString().split('T')[0];
+                // Calcula a data de cada dia da semana atual (Domingo a Sábado)
+                d.setDate(hoje.getDate() - (diaSemanaAtual - i));
+                
+                const diaLocal = d.getDate();
+                const mesLocal = d.getMonth();
+                const anoLocal = d.getFullYear();
+
+                // Soma KM filtrando pela data local (evita erro de fuso horário)
                 const kmDia = viagensConfirmadas
-                  .filter(v => v.inicio.startsWith(dataStr))
+                  .filter(v => {
+                    const dataV = new Date(v.inicio);
+                    return dataV.getDate() === diaLocal && 
+                           dataV.getMonth() === mesLocal && 
+                           dataV.getFullYear() === anoLocal;
+                  })
                   .reduce((acc, v) => acc + (v.distanciaKm || 0), 0);
-                dias.push({ label: nomesDias[d.getDay()], km: kmDia, hoje: i === 0 });
+
+                dias.push({ 
+                  label: nomesDias[i], 
+                  km: kmDia, 
+                  hoje: i === diaSemanaAtual 
+                });
               }
               
-              const maxKm = Math.max(...dias.map(d => d.km), 5);
+              const maxKm = Math.max(...dias.map(d => d.km), 10);
               
               return dias.map((dia, idx) => (
                 <View key={idx} style={estilos.colunaGrafico}>
                   <View style={estilos.barraContainer}>
                     <View style={[
                       estilos.barra,
-                      { height: `${(dia.km / maxKm) * 100}%` },
-                      dia.hoje && { backgroundColor: cores.primario }
+                      { height: `${Math.min((dia.km / maxKm) * 100, 100)}%` },
+                      dia.hoje && { backgroundColor: cores.primario },
+                      !dia.hoje && dia.km > 0 && { backgroundColor: 'rgba(255,255,255,0.4)' }
                     ]} />
                   </View>
                   <Text style={[estilos.diaTexto, dia.hoje && { color: cores.primario, fontWeight: 'bold' }]}>
