@@ -111,7 +111,7 @@ export default function TriagemScreen({ navigation }) {
         <StatusBar barStyle="light-content" backgroundColor={cores.cinzaFundo} />
         <View style={estilos.concluido}>
           <Image 
-            source={require('../../assets/triagem_concluida.png')}
+            source={require('../../assets/triagem_mariana.jpg')}
             style={estilos.concluidoImagem}
             resizeMode="contain"
           />
