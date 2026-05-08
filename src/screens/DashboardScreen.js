@@ -117,19 +117,16 @@ export default function DashboardScreen({ navigation }) {
               const nomesDias = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
               
               for (let i = 0; i < 7; i++) {
-                const d = new Date();
+                const d = new Date(hoje);
                 d.setDate(hoje.getDate() - (diaSemanaAtual - i));
                 
-                const diaLocal = d.getDate();
-                const mesLocal = d.getMonth();
-                const anoLocal = d.getFullYear();
+                // Formato local: "DD/MM/YYYY"
+                const dataLocalStr = d.toLocaleDateString('pt-BR');
 
                 const kmDia = viagensConfirmadas
                   .filter(v => {
-                    const dV = new Date(v.inicio);
-                    return dV.getFullYear() === anoLocal && 
-                           dV.getMonth() === mesLocal && 
-                           dV.getDate() === diaLocal;
+                    const dataVStr = new Date(v.inicio).toLocaleDateString('pt-BR');
+                    return dataVStr === dataLocalStr;
                   })
                   .reduce((acc, v) => acc + (v.distanciaKm || 0), 0);
 
