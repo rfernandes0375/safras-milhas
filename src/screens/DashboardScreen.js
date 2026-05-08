@@ -85,56 +85,43 @@ export default function DashboardScreen({ navigation }) {
           </View>
         </View>
 
-        {/* ─── Card Hero: Total do Mês ──────────────────────────────────── */}
-        <View style={estilos.cardHero}>
-          <View style={estilos.cardHeroDecoracao} />
-
-          <Text style={estilos.cardHeroLabel}>{mesFormatado}</Text>
-
-          <Text style={estilos.cardHeroValor}>
-            {formatarMoeda(totalReembolsoMes)}
-          </Text>
-          <Text style={estilos.cardHeroSub}>a reembolsar</Text>
-
-          <View style={estilos.cardHeroDivisor} />
-
-          <View style={estilos.cardHeroKm}>
-            <Ionicons name="navigate" size={18} color={cores.branco} style={{ opacity: 0.8 }} />
-            <Text style={estilos.cardHeroKmTexto}>
-              {formatarKm(totalKmMes)} confirmados
-            </Text>
+        {/* ─── Grid de Métricas (Compacto) ────────────────────────────── */}
+        <View style={estilos.gridMetricas}>
+          <View style={estilos.cardMetrica}>
+            <Text style={estilos.cardMetricaLabel}>{mesFormatado}</Text>
+            <Text style={estilos.cardMetricaValor}>{formatarMoeda(totalReembolsoMes)}</Text>
+            <Text style={estilos.cardMetricaSub}>a reembolsar</Text>
+          </View>
+          <View style={estilos.cardMetrica}>
+            <Text style={estilos.cardMetricaLabel}>TOTAL KM</Text>
+            <Text style={estilos.cardMetricaValor}>{formatarKm(totalKmMes)}</Text>
+            <Text style={estilos.cardMetricaSub}>confirmados</Text>
           </View>
         </View>
 
-        {/* ─── Gráfico Semanal ────────────────────────────────────────── */}
+        {/* ─── Gráfico Semanal (Slim) ─────────────────────────────────── */}
         <View style={estilos.graficoContainer}>
-          <Text style={estilos.graficoTitulo}>KM na semana atual</Text>
+          <View style={estilos.graficoHeader}>
+            <Text style={estilos.graficoTitulo}>KM NA SEMANA ATUAL</Text>
+            <Ionicons name="bar-chart" size={14} color={cores.primario} style={{ opacity: 0.6 }} />
+          </View>
           <View style={estilos.graficoBarras}>
             {(() => {
               const hoje = new Date();
-              const diaSemanaAtual = hoje.getDay(); // 0 = Domingo, 5 = Sexta
+              const diaSemanaAtual = hoje.getDay(); 
               const dias = [];
               const nomesDias = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
               
               for (let i = 0; i < 7; i++) {
                 const d = new Date(hoje);
                 d.setDate(hoje.getDate() - (diaSemanaAtual - i));
-                
-                // Formato local: "DD/MM/YYYY"
                 const dataLocalStr = d.toLocaleDateString('pt-BR');
 
                 const kmDia = viagensConfirmadas
-                  .filter(v => {
-                    const dataVStr = new Date(v.inicio).toLocaleDateString('pt-BR');
-                    return dataVStr === dataLocalStr;
-                  })
+                  .filter(v => new Date(v.inicio).toLocaleDateString('pt-BR') === dataLocalStr)
                   .reduce((acc, v) => acc + (v.distanciaKm || 0), 0);
 
-                dias.push({ 
-                  label: nomesDias[i], 
-                  km: kmDia, 
-                  hoje: i === diaSemanaAtual 
-                });
+                dias.push({ label: nomesDias[i], km: kmDia, hoje: i === diaSemanaAtual });
               }
               
               const maxKm = Math.max(...dias.map(d => d.km), 1);
@@ -145,7 +132,7 @@ export default function DashboardScreen({ navigation }) {
                     <View style={[
                       estilos.barra,
                       { height: `${Math.min((dia.km / maxKm) * 100, 100)}%` },
-                      (dia.hoje || dia.km > 0) && { backgroundColor: cores.primario }
+                      (dia.km > 0) && { backgroundColor: cores.primario }
                     ]} />
                   </View>
                   <Text style={[estilos.diaTexto, dia.hoje && { color: cores.primario, fontWeight: 'bold' }]}>
@@ -359,105 +346,87 @@ const estilos = StyleSheet.create({
   },
 
   // Gráfico
+  gridMetricas: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  cardMetrica: {
+    flex: 1,
+    backgroundColor: cores.fundoCard,
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  cardMetricaLabel: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: cores.cinzaTexto,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  cardMetricaValor: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: cores.texto,
+    marginBottom: 2,
+  },
+  cardMetricaSub: {
+    fontSize: 11,
+    color: cores.cinzaTexto,
+    opacity: 0.7,
+  },
   graficoContainer: {
     backgroundColor: cores.fundoCard,
+    marginHorizontal: 20,
     borderRadius: 24,
     padding: 20,
     marginBottom: 20,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
   },
-  graficoTitulo: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: cores.cinzaTexto,
+  graficoHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 20,
-    textTransform: 'uppercase',
+  },
+  graficoTitulo: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: cores.cinzaTexto,
     letterSpacing: 1,
   },
   graficoBarras: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    height: 80,
     alignItems: 'flex-end',
-    height: 100,
+    justifyContent: 'space-between',
   },
   colunaGrafico: {
     alignItems: 'center',
-    flex: 1,
+    width: 30,
   },
   barraContainer: {
-    flex: 1,
-    width: 12,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 6,
+    height: '100%',
+    width: 8,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 4,
     justifyContent: 'flex-end',
-    overflow: 'hidden',
+    marginBottom: 8,
   },
   barra: {
     width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 4,
   },
   diaTexto: {
     fontSize: 10,
     color: cores.cinzaTexto,
-    marginTop: 8,
     fontWeight: '600',
-  },
-
-  // ─── Card Hero ──────────────────────────────────────────────────
-  cardHero: {
-    backgroundColor: cores.fundoCard,
-    borderRadius: bordas.lg,
-    padding: espacamento.lg,
-    marginBottom: espacamento.lg,
-    overflow: 'hidden',
-    ...sombras.media,
-  },
-  cardHeroDecoracao: {
-    position: 'absolute',
-    top: -20,
-    right: -20,
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: cores.branco,
-    opacity: 0.05,
-  },
-  cardHeroLabel: {
-    fontSize: tipografia.micro,
-    fontWeight: tipografia.bold,
-    color: cores.cinzaEscuro,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  cardHeroValor: {
-    fontSize: 36,
-    fontWeight: tipografia.bold,
-    color: '#00D1FF', // Ciano vibrante para o valor
-    marginVertical: 4,
-  },
-  cardHeroSub: {
-    fontSize: tipografia.normal,
-    color: cores.cinzaTexto,
-    marginBottom: espacamento.md,
-  },
-  cardHeroDivisor: {
-    height: 1,
-    backgroundColor: cores.cinzaMedio,
-    marginBottom: espacamento.md,
-    opacity: 0.5,
-  },
-  cardHeroKm: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  cardHeroKmTexto: {
-    fontSize: tipografia.normal,
-    color: cores.branco,
-    fontWeight: '500',
   },
 
   // ─── Botão Triagem ──────────────────────────────────────────────
