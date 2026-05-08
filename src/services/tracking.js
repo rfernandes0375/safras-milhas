@@ -13,7 +13,7 @@
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import Constants from 'expo-constants';
-import { geocodificarCoordenada } from './geocoding';
+import { salvarEstadoRastreamento, buscarEstadoRastreamento, limparEstadoRastreamento } from './database';
 import { calcularDistanciaKm, eProvavelTrabalho } from '../utils/calculos';
 
 // Nome da task registrada no sistema iOS
@@ -59,8 +59,8 @@ const processarLocalizacao = async (local) => {
   const agora = timestamp || Date.now();
 
   if (!estadoViagem.emAndamento) {
-    // Iniciando rastreio mais cedo (8 km/h)
-    if (velocidadeKmh > 8) {
+    // Iniciando rastreio mais cedo (5 km/h) para não perder o começo da rua
+    if (velocidadeKmh > 5) {
       console.log('[Tracking] Viagem iniciada');
       estadoViagem.emAndamento = true;
       estadoViagem.inicio = new Date(agora).toISOString();
@@ -72,15 +72,23 @@ const processarLocalizacao = async (local) => {
       if (estadoViagem.callbackAtualizar) {
         estadoViagem.callbackAtualizar({ emAndamento: true, inicio: estadoViagem.inicio, coordenadas: estadoViagem.coordenadas });
       }
+      
+      // Persiste estado e ponto inicial
+      await salvarEstadoRastreamento(estadoViagem);
+      await adicionarPontoTemporario(latitude, longitude, agora);
     }
   } else {
     const ultimoPonto = estadoViagem.coordenadas[estadoViagem.coordenadas.length - 1];
     if (ultimoPonto) {
       const distUltimo = calcularDistanciaKm([{lat: ultimoPonto.lat, lng: ultimoPonto.lng}, {lat: latitude, lng: longitude}]) * 1000;
-      if (distUltimo < 10 && velocidadeKmh < 5) return;
+      // Se andou menos de 10m e está parado, ignora para poupar banco
+      if (distUltimo < 10 && velocidadeKmh < 3) return;
     }
 
     estadoViagem.coordenadas.push({ lat: latitude, lng: longitude, t: agora });
+
+    // Salva ponto individual de forma rápida
+    await adicionarPontoTemporario(latitude, longitude, agora);
 
     if (velocidadeKmh < 3) {
       const penultimoPonto = estadoViagem.coordenadas[estadoViagem.coordenadas.length - 2];
@@ -91,6 +99,8 @@ const processarLocalizacao = async (local) => {
     } else {
       estadoViagem.tempoParado = 0;
     }
+    // Salva estado geral (metadados)
+    await salvarEstadoRastreamento({ ...estadoViagem, coordenadas: [] }); // Não salva coordenadas aqui para ser rápido
   }
   estadoViagem.ultimaVelocidade = velocidadeKmh;
 };
@@ -119,6 +129,10 @@ const finalizarViagem = async (latFim, lngFim, agora, forcar = false) => {
   estadoViagem.tempoParado = 0;
 
   if (estadoViagem.callbackAtualizar) estadoViagem.callbackAtualizar(null);
+  
+  // Limpa estado temporário do banco pois a viagem foi concluída ou descartada
+  await limparEstadoRastreamento();
+  await limparPontosTemporarios();
   
   const distMinima = estadoViagem.config?.distanciaMinima || 200;
   if (!forcar && distanciaMetros < distMinima) {
@@ -149,59 +163,73 @@ export const iniciarRastreamento = async ({ onViagemDetectada, onViagemAtualizad
   estadoViagem.callbackAtualizar = onViagemAtualizada;
   estadoViagem.config = config;
 
+  // 1. Tenta recuperar viagem que estava em curso (metadados)
+  const estadoSalvo = await buscarEstadoRastreamento();
+  if (estadoSalvo && estadoSalvo.emAndamento) {
+    console.log('[Tracking] Recuperando metadados da viagem em curso...');
+    estadoViagem.emAndamento = true;
+    estadoViagem.inicio = estadoSalvo.inicio;
+    estadoViagem.latInicio = estadoSalvo.latInicio;
+    estadoViagem.lngInicio = estadoSalvo.lngInicio;
+    estadoViagem.tempoParado = estadoSalvo.tempoParado || 0;
+
+    // 2. Recupera os pontos individuais (Caixa Preta)
+    const pontosSalvos = await buscarPontosTemporarios();
+    if (pontosSalvos.length > 0) {
+      console.log(`[Tracking] Recuperados ${pontosSalvos.length} pontos da caixa preta.`);
+      estadoViagem.coordenadas = pontosSalvos;
+    } else {
+      estadoViagem.coordenadas = estadoSalvo.coordenadas || [];
+    }
+    
+    if (onViagemAtualizada) {
+      onViagemAtualizada({ 
+        emAndamento: true, 
+        inicio: estadoViagem.inicio, 
+        coordenadas: estadoViagem.coordenadas 
+      });
+    }
+  }
+
   const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
   if (fgStatus !== 'granted') return false;
 
-  // Se estiver no EXPO GO, não tentamos o background (evita erro de Info.plist)
-  const isExpoGo = Constants.appOwnership === 'expo';
-
-  if (isExpoGo) {
-    console.log('[Tracking] Ambiente: Expo Go. Usando rastreamento de primeiro plano.');
-    if (foregroundSubscription) foregroundSubscription.remove();
-    
-    foregroundSubscription = await Location.watchPositionAsync(
-      {
-        accuracy: Location.Accuracy.BestForNavigation,
-        distanceInterval: 50,
-        timeInterval: 10000,
-      },
-      (location) => processarLocalizacao(location)
-    );
-    return true;
-  }
-
-  // Se não for Expo Go, tenta o modo real (Background)
+  // TENTA usar o modo Background mesmo no Expo Go (melhoria de robustez)
   try {
     const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
-    if (bgStatus !== 'granted') return false;
-
-    const ativa = await Location.hasStartedLocationUpdatesAsync(TASK_RASTREAMENTO).catch(() => false);
-    if (!ativa) {
-      await Location.startLocationUpdatesAsync(TASK_RASTREAMENTO, {
-        accuracy: Location.Accuracy.BestForNavigation,
-        distanceInterval: 50,
-        deferredUpdatesInterval: 30000,
-        showsBackgroundLocationIndicator: true,
-        foregroundService: {
-          notificationTitle: 'Safras Milhas',
-          notificationBody: 'Rastreamento ativo',
-        },
-        pausesUpdatesAutomatically: false,
-      });
+    
+    // Se temos permissão de background, tentamos o modo "Real"
+    if (bgStatus === 'granted') {
+      const ativa = await Location.hasStartedLocationUpdatesAsync(TASK_RASTREAMENTO).catch(() => false);
+      if (!ativa) {
+        await Location.startLocationUpdatesAsync(TASK_RASTREAMENTO, {
+          accuracy: Location.Accuracy.BestForNavigation,
+          distanceInterval: 30, // Reduzido para pegar mais detalhes
+          deferredUpdatesInterval: 15000,
+          showsBackgroundLocationIndicator: true, // Força a "Bolha Azul" no iOS
+          foregroundService: {
+            notificationTitle: 'Safras Milhas',
+            notificationBody: 'Rastreamento ativo',
+          },
+          pausesUpdatesAutomatically: false,
+        });
+      }
+      return true;
     }
-    return true;
   } catch (err) {
-    console.warn('[Tracking] Falha ao iniciar modo background, tentando foreground:', err.message);
-    // Fallback manual se o modo background falhar (ex: Info.plist faltando)
-    foregroundSubscription = await Location.watchPositionAsync(
-      {
-        accuracy: Location.Accuracy.BestForNavigation,
-        distanceInterval: 50,
-      },
-      (location) => processarLocalizacao(location)
-    );
-    return true;
+    console.warn('[Tracking] Falha ao iniciar modo background:', err.message);
   }
+
+  // Fallback para Foreground se o background for negado ou falhar no Expo Go
+  if (foregroundSubscription) foregroundSubscription.remove();
+  foregroundSubscription = await Location.watchPositionAsync(
+    {
+      accuracy: Location.Accuracy.BestForNavigation,
+      distanceInterval: 30,
+    },
+    (location) => processarLocalizacao(location)
+  );
+  return true;
 };
 
 export const pararViagemManualmente = async () => {

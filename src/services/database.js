@@ -34,7 +34,49 @@ export const inicializar = async () => {
       chave TEXT PRIMARY KEY,
       valor TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS estado_rastreamento (
+      id INTEGER PRIMARY KEY,
+      dados TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS pontos_viagem_atual (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      lat REAL NOT NULL,
+      lng REAL NOT NULL,
+      t INTEGER NOT NULL
+    );
   `);
+};
+
+export const adicionarPontoTemporario = async (lat, lng, t) => {
+  await db.runAsync(
+    `INSERT INTO pontos_viagem_atual (lat, lng, t) VALUES (?, ?, ?)`,
+    [lat, lng, t]
+  );
+};
+
+export const buscarPontosTemporarios = async () => {
+  const rows = await db.getAllAsync(`SELECT lat, lng, t FROM pontos_viagem_atual ORDER BY t ASC`);
+  return rows.map(r => ({ lat: r.lat, lng: r.lng, t: r.t }));
+};
+
+export const limparPontosTemporarios = async () => {
+  await db.runAsync(`DELETE FROM pontos_viagem_atual`);
+};
+
+export const salvarEstadoRastreamento = async (estado) => {
+  await db.runAsync(
+    `INSERT OR REPLACE INTO estado_rastreamento (id, dados) VALUES (1, ?)`,
+    [JSON.stringify(estado)]
+  );
+};
+
+export const buscarEstadoRastreamento = async () => {
+  const row = await db.getFirstAsync(`SELECT dados FROM estado_rastreamento WHERE id = 1`);
+  return row ? JSON.parse(row.dados) : null;
+};
+
+export const limparEstadoRastreamento = async () => {
+  await db.runAsync(`DELETE FROM estado_rastreamento WHERE id = 1`);
 };
 
 export const salvarViagem = async (viagem) => {
