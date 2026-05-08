@@ -23,7 +23,7 @@ export default function DashboardScreen({ navigation }) {
   const {
     totalKmMes, totalReembolsoMes, totalPendentes,
     viagensConfirmadas, rastreamentoAtivo, viagemEmCurso, 
-    pararViagem, mesAtual, carregando,
+    pararViagem, mesAtual, carregando, inicializarApp,
   } = useApp();
 
   // Pega as últimas 5 viagens confirmadas para o resumo
@@ -55,9 +55,14 @@ export default function DashboardScreen({ navigation }) {
           </View>
           <TouchableOpacity 
             style={estilos.statusBadge}
-            onPress={() => {
+            onPress={async () => {
               if (!rastreamentoAtivo) {
-                inicializarApp(); // Tenta reinicializar tudo (GPS e Permissões)
+                try {
+                  await inicializarApp();
+                  Alert.alert('Safras Milhas', 'Tentando reativar rastreamento...');
+                } catch (e) {
+                  Alert.alert('Erro', 'Não foi possível iniciar o GPS. Verifique as permissões do iPhone.');
+                }
               }
             }}
             activeOpacity={0.7}
