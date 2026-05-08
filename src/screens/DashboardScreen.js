@@ -103,7 +103,7 @@ export default function DashboardScreen({ navigation }) {
         <View style={estilos.graficoContainer}>
           <View style={estilos.graficoHeader}>
             <Text style={estilos.graficoTitulo}>KM NA SEMANA ATUAL</Text>
-            <Ionicons name="bar-chart" size={16} color={cores.primario} />
+            <Ionicons name="bar-chart" size={14} color={cores.primario} style={{ opacity: 0.6 }} />
           </View>
           <View style={estilos.graficoBarras}>
             {(() => {
@@ -392,14 +392,14 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
-    paddingHorizontal: 5,
+    marginBottom: 30, // Aumentado para dar espaço às barras
+    paddingHorizontal: 4,
   },
   graficoTitulo: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: '#F8FAFC', // Mais claro para destaque
-    letterSpacing: 1.5,
+    fontSize: 11,
+    fontWeight: '700',
+    color: cores.cinzaTexto,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
   graficoBarras: {
