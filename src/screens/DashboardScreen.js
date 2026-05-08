@@ -393,12 +393,14 @@ const estilos = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+    paddingHorizontal: 4, // Pequeno recuo interno
   },
   graficoTitulo: {
-    fontSize: 10,
-    fontWeight: 'bold',
+    fontSize: 11,
+    fontWeight: '800',
     color: cores.cinzaTexto,
-    letterSpacing: 1,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
   },
   graficoBarras: {
     flexDirection: 'row',
