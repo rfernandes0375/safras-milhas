@@ -240,7 +240,7 @@ export const iniciarRastreamento = async ({ onViagemDetectada, onViagemAtualizad
     }
   } catch (err) {
     console.warn('[Tracking] Erro ao iniciar modo background:', err.message);
-    Alert.alert('Aviso de GPS', 'O modo de segundo plano falhou. O app só rastreará com a tela aberta. Erro: ' + err.message);
+    // Silenciado para não atrapalhar o usuário, já que o modo foreground funciona.
   }
 
   if (foregroundSubscription) foregroundSubscription.remove();
