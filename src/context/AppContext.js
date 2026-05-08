@@ -167,6 +167,7 @@ export const AppProvider = ({ children }) => {
       viagemEmCurso,
       classificarViagem, editarViagem, excluirViagem, salvarConfig, carregarViagens, carregando,
       pararViagem,
+      inicializarApp,
     }}>
       {children}
     </AppContext.Provider>

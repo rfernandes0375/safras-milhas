@@ -53,14 +53,25 @@ export default function DashboardScreen({ navigation }) {
               resizeMode="contain"
             />
           </View>
+          <TouchableOpacity 
+          style={estilos.statusBadge}
+          onPress={() => {
+            if (!rastreamentoAtivo) {
+              inicializarApp(); // Tenta reinicializar tudo (GPS e Permissões)
+            }
+          }}
+          activeOpacity={0.7}
+        >
           <View style={estilos.rastreamentoIndicador}>
             <View style={[
               estilos.rastreioPonto,
               rastreamentoAtivo && estilos.rastreioPontoAtivo
             ]} />
             <Text style={estilos.rastreaioTexto}>
-              {rastreamentoAtivo ? 'Rastreando' : 'Pausado'}
+              {rastreamentoAtivo ? 'Rastreando' : 'Pausado (Tocar para Iniciar)'}
             </Text>
+          </View>
+        </TouchableOpacity>
             {viagemEmCurso && (
               <TouchableOpacity 
                 style={estilos.botaoPararManual}
