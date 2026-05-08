@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 import * as Database from '../services/database';
+import * as Tracking from '../services/tracking';
 import { cores, tipografia, espacamento, bordas, sombras } from '../utils/theme';
 
 export default function ConfiguracoesScreen() {
@@ -244,6 +245,34 @@ export default function ConfiguracoesScreen() {
           </View>
         </Secao>
 
+        {/* ─── Diagnóstico ─────────────────────────────────────────── */}
+        <View style={estilos.secao}>
+          <Text style={estilos.secaoTitulo}>Diagnóstico do Sistema</Text>
+          <View style={estilos.cardInfo}>
+            <View style={estilos.infoRow}>
+              <Text style={estilos.infoLabel}>Status GPS:</Text>
+              <Text style={[estilos.infoValor, { color: Tracking.getUltimaLocalizacao() ? cores.sucesso : cores.erro }]}>
+                {Tracking.getUltimaLocalizacao() ? 'RECEBENDO DADOS' : 'AGUARDANDO SINAL...'}
+              </Text>
+            </View>
+            {Tracking.getUltimaLocalizacao() && (
+              <>
+                <View style={estilos.infoRow}>
+                  <Text style={estilos.infoLabel}>Latitude:</Text>
+                  <Text style={estilos.infoValor}>{Tracking.getUltimaLocalizacao().latitude.toFixed(6)}</Text>
+                </View>
+                <View style={estilos.infoRow}>
+                  <Text style={estilos.infoLabel}>Longitude:</Text>
+                  <Text style={estilos.infoValor}>{Tracking.getUltimaLocalizacao().longitude.toFixed(6)}</Text>
+                </View>
+              </>
+            )}
+            <Text style={estilos.infoDica}>
+              Se os números acima mudarem ou aparecerem, o GPS está funcionando corretamente.
+            </Text>
+          </View>
+        </View>
+
         {/* ─── Botões de Ação ───────────────────────────────────────── */}
         <View style={estilos.footerAcoes}>
           <TouchableOpacity style={estilos.botaoSalvar} onPress={salvar} activeOpacity={0.8}>
@@ -260,6 +289,7 @@ export default function ConfiguracoesScreen() {
           </TouchableOpacity>
         </View>
 
+        <View style={estilos.espacamentoFinal} />
         <Text style={estilos.versao}>Safras Milhas v1.0.8 • Safras & Cifras</Text>
       </ScrollView>
     </SafeAreaView>

@@ -22,6 +22,7 @@ const TASK_RASTREAMENTO = 'SAFRAS_RASTREAMENTO_BG';
 
 // Armazena a inscrição do watchPosition para poder parar depois
 let foregroundSubscription = null;
+let ultimaLocalizacao = null; // Exportado para diagnóstico
 
 // Estado interno do rastreamento
 let estadoViagem = {
@@ -51,6 +52,10 @@ TaskManager.defineTask(TASK_RASTREAMENTO, async ({ data, error }) => {
 
 // ─── Processamento de cada ponto GPS ─────────────────────────────────────────
 const processarLocalizacao = async (local) => {
+  if (!local || !local.coords) return;
+  
+  ultimaLocalizacao = local.coords; // Guarda para diagnóstico
+  
   const { latitude, longitude, speed, timestamp, accuracy } = local.coords;
 
   // Aumentada tolerância para evitar descarte em áreas de sinal médio
@@ -252,7 +257,9 @@ export const iniciarRastreamento = async ({ onViagemDetectada, onViagemAtualizad
     (location) => processarLocalizacao(location)
   );
   return true;
-};
+}
+
+export const getUltimaLocalizacao = () => ultimaLocalizacao;
 
 export const pararViagemManualmente = async () => {
   if (estadoViagem.emAndamento && estadoViagem.coordenadas.length > 0) {
