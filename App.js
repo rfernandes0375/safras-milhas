@@ -123,46 +123,11 @@ export default function App() {
   const appState = useRef(AppState.currentState);
 
   useEffect(() => {
-    // Verifica permissões ao iniciar e toda vez que o app volta ao foreground
-    verificarPermissoes();
-
-    const subscription = AppState.addEventListener('change', nextAppState => {
-      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        verificarPermissoes();
-      }
-      appState.current = nextAppState;
-    });
-
-    return () => {
-      subscription.remove();
-    };
+    // Deixamos o início do rastreio e permissões para o AppContext / TrackingService
+    // evitando conflito de pedidos simultâneos no iOS
   }, []);
 
-  const verificarPermissoes = async () => {
-    try {
-      // 1. Pede permissão de 'Durante o Uso' primeiro
-      const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
-      
-      if (fgStatus === 'granted') {
-        // 2. Se deu certo, agora pedimos a de 'Sempre' (segundo plano)
-        // Isso é o que faz a opção aparecer nos Ajustes
-        const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
-        
-        if (bgStatus !== 'granted' && Platform.OS === 'ios') {
-          Alert.alert(
-            'Localização em 2º Plano',
-            'Para que o rastreio funcione com a tela bloqueada, vá nos Ajustes e mude para "Sempre".',
-            [
-              { text: 'Entendido', style: 'default' },
-              { text: 'Abrir Ajustes', onPress: () => Linking.openSettings() }
-            ]
-          );
-        }
-      }
-    } catch (error) {
-      console.warn('Erro nas permissões:', error);
-    }
-  };
+
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
