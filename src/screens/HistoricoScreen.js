@@ -151,26 +151,27 @@ export default function HistoricoScreen({ navigation }) {
       <StatusBar barStyle="light-content" backgroundColor={cores.cinzaFundo} />
 
       <View style={estilos.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <Text style={estilos.headerTitulo}>Histórico</Text>
-          <TouchableOpacity onPress={() => { setSelecaoAtiva(!selecaoAtiva); setSelecionados(new Set()); }}>
-            <Text style={[estilos.botaoModoSelecaoTexto, selecaoAtiva && { color: cores.primario }]}>
+        <Text style={estilos.headerTitulo}>Histórico</Text>
+        
+        <View style={estilos.headerAcoes}>
+          <TouchableOpacity 
+            style={estilos.botaoHeaderSelecao} 
+            onPress={() => { setSelecaoAtiva(!selecaoAtiva); setSelecionados(new Set()); }}
+          >
+            <Text style={[estilos.botaoSelecaoTexto, selecaoAtiva && { color: cores.primario }]}>
               {selecaoAtiva ? 'Cancelar' : 'Selecionar'}
             </Text>
           </TouchableOpacity>
-        </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <TouchableOpacity 
             style={estilos.botaoHeaderIcone} 
             onPress={() => navigation.navigate('Lixeira')}
           >
-            <Ionicons name="trash-bin-outline" size={20} color={cores.cinzaTexto} />
+            <Ionicons name="trash-outline" size={20} color={cores.cinzaTexto} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={estilos.botaoRelatorio} onPress={handleExportar}>
-            <Ionicons name="document-text-outline" size={18} color={cores.primario} />
-            <Text style={estilos.botaoRelatorioTexto}>Exportar</Text>
+          <TouchableOpacity style={estilos.botaoExportar} onPress={handleExportar}>
+            <Ionicons name="share-outline" size={20} color={cores.primario} />
           </TouchableOpacity>
         </View>
       </View>
@@ -244,10 +245,50 @@ export default function HistoricoScreen({ navigation }) {
 
 const estilos = StyleSheet.create({
   container: { flex: 1, backgroundColor: cores.cinzaFundo },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: espacamento.md },
-  headerTitulo: { fontSize: 24, fontWeight: 'bold', color: cores.texto },
-  botaoRelatorio: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: cores.primarioFundo, padding: 8, borderRadius: 12 },
-  botaoRelatorioTexto: { color: cores.primario, fontWeight: 'bold' },
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  headerTitulo: { fontSize: 28, fontWeight: 'bold', color: cores.texto },
+  headerAcoes: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  botaoHeaderSelecao: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  botaoSelecaoTexto: {
+    fontSize: 14,
+    color: cores.cinzaTexto,
+    fontWeight: '600',
+  },
+  botaoHeaderIcone: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  botaoExportar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 242, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 242, 255, 0.2)',
+  },
   seletorMes: { paddingHorizontal: espacamento.md, paddingVertical: 16, marginBottom: 4 },
   chipMes: { paddingHorizontal: 16, height: 36, borderRadius: 18, backgroundColor: cores.fundoCard, marginRight: 8, justifyContent: 'center', borderWidth: 1, borderColor: cores.cinzaClaro },
   chipMesSelecionado: { backgroundColor: 'rgba(0, 209, 255, 0.1)', borderColor: cores.primario },
