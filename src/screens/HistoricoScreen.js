@@ -70,13 +70,13 @@ export default function HistoricoScreen({ navigation }) {
     const v = viagem || viagemEdicao;
     if (!v) return;
     Alert.alert(
-      'Excluir Viagem',
-      'Tem certeza que deseja remover esta viagem?',
+      'Mover para Lixeira',
+      'Deseja mover esta viagem para a lixeira? Você poderá recuperá-la depois.',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Excluir', style: 'destructive', onPress: async () => {
-          await Database.excluirViagem(v.id);
-          excluirViagem(v.id);
+        { text: 'Mover', style: 'destructive', onPress: async () => {
+          await Database.classificarViagem(v.id, 'descartada');
+          excluirViagem(v.id); // Remove da lista local do contexto
           setModalVisivel(false);
         }},
       ]
@@ -160,10 +160,19 @@ export default function HistoricoScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={estilos.botaoRelatorio} onPress={handleExportar}>
-          <Ionicons name="document-text-outline" size={18} color={cores.primario} />
-          <Text style={estilos.botaoRelatorioTexto}>Exportar</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TouchableOpacity 
+            style={estilos.botaoHeaderIcone} 
+            onPress={() => navigation.navigate('Lixeira')}
+          >
+            <Ionicons name="trash-bin-outline" size={20} color={cores.cinzaTexto} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={estilos.botaoRelatorio} onPress={handleExportar}>
+            <Ionicons name="document-text-outline" size={18} color={cores.primario} />
+            <Text style={estilos.botaoRelatorioTexto}>Exportar</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.seletorMes}>
@@ -277,5 +286,13 @@ const estilos = StyleSheet.create({
   botaoExcluir: { padding: 12 },
   botaoSalvarEdicao: { flex: 1, backgroundColor: cores.primario, padding: 12, borderRadius: 12, alignItems: 'center' },
   botaoSalvarTexto: { color: '#0F172A', fontWeight: 'bold' },
-  botaoModoSelecaoTexto: { fontSize: 12, color: cores.cinzaTexto, fontWeight: 'bold' },
+  botaoHeaderIcone: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  botaoModoSelecaoTexto: { fontSize: 14, color: cores.cinzaTexto, fontWeight: '600' },
 });

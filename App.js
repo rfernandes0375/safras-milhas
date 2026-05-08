@@ -27,6 +27,8 @@ import { AppProvider } from './src/context/AppContext';
 import DashboardScreen from './src/screens/DashboardScreen';
 import TriagemScreen from './src/screens/TriagemScreen';
 import HistoricoScreen from './src/screens/HistoricoScreen';
+import LixeiraScreen from './src/screens/LixeiraScreen';
+import AjustesScreen from './src/screens/AjustesScreen';
 import ConfiguracoesScreen from './src/screens/ConfiguracoesScreen';
 import DetalhesViagemScreen from './src/screens/DetalhesViagemScreen';
 import RelatorioScreen from './src/screens/RelatorioScreen';
@@ -90,6 +92,9 @@ function RootNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Main" component={TabNavigator} />
+      <Stack.Screen name="Historico" component={HistoricoScreen} />
+      <Stack.Screen name="Lixeira" component={LixeiraScreen} />
+      <Stack.Screen name="Ajustes" component={AjustesScreen} />
       <Stack.Screen
         name="Triagem"
         component={TriagemScreen}

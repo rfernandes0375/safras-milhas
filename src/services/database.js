@@ -104,6 +104,15 @@ export const buscarMesesDisponiveis = async () => {
   return rows.map(r => r.mes_referencia);
 };
 
+export const buscarViagensDescartadas = async () => {
+  const rows = await db.getAllAsync(`SELECT * FROM viagens WHERE classificacao IN ('pessoal', 'descartada') ORDER BY inicio DESC`);
+  return rows.map(mapearViagem);
+};
+
+export const restaurarViagem = async (id) => {
+  await db.runAsync(`UPDATE viagens SET classificacao = NULL WHERE id = ?`, [id]);
+};
+
 export const buscarViagemPorId = async (id) => {
   const row = await db.getFirstAsync(`SELECT * FROM viagens WHERE id = ?`, [id]);
   return row ? mapearViagem(row) : null;
