@@ -55,12 +55,18 @@ export const AppProvider = ({ children }) => {
       // Inicia Rastreamento
       const ativo = await Tracking.iniciarRastreamento({
         config: configSalva || CONFIG_PADRAO,
-        onViagemDetectada: handleNovaViagem,
+        onViagemDetectada: async (viagem) => {
+          await handleNovaViagem(viagem);
+          await carregarViagens(); // Recarrega para garantir que apareça na lista
+        },
         onViagemAtualizada: (estado) => {
           setViagemEmCurso(!!estado?.emAndamento);
         }
       });
-      setRastreamentoAtivo(ativo);
+      setRastreamentoAtivo(!!ativo);
+
+      // Recarga de segurança após iniciar o rastreamento (caso uma viagem órfã tenha sido recuperada)
+      await carregarViagens();
 
     } catch (error) {
       console.error('[AppContext] Erro na inicialização:', error);

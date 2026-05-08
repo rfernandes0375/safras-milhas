@@ -165,30 +165,47 @@ export const iniciarRastreamento = async ({ onViagemDetectada, onViagemAtualizad
 
   // 1. Tenta recuperar viagem que estava em curso (metadados)
   const estadoSalvo = await buscarEstadoRastreamento();
-  if (estadoSalvo && estadoSalvo.emAndamento) {
-    console.log('[Tracking] Recuperando metadados da viagem em curso...');
-    estadoViagem.emAndamento = true;
-    estadoViagem.inicio = estadoSalvo.inicio;
-    estadoViagem.latInicio = estadoSalvo.latInicio;
-    estadoViagem.lngInicio = estadoSalvo.lngInicio;
-    estadoViagem.tempoParado = estadoSalvo.tempoParado || 0;
+  const pontosSalvos = await buscarPontosTemporarios();
 
-    // 2. Recupera os pontos individuais (Caixa Preta)
-    const pontosSalvos = await buscarPontosTemporarios();
-    if (pontosSalvos.length > 0) {
-      console.log(`[Tracking] Recuperados ${pontosSalvos.length} pontos da caixa preta.`);
+  if (estadoSalvo && estadoSalvo.emAndamento && pontosSalvos.length > 0) {
+    const agora = Date.now();
+    const ultimoPonto = pontosSalvos[pontosSalvos.length - 1];
+    const tempoDesdeUltimoPonto = agora - (ultimoPonto.t || agora);
+
+    // Se o último ponto foi há mais de 10 minutos, a viagem caiu. 
+    // Vamos finalizar ela agora para não perder os dados.
+    if (tempoDesdeUltimoPonto > 10 * 60 * 1000) {
+      console.log('[Tracking] Detectada viagem órfã antiga. Finalizando automaticamente...');
+      estadoViagem.emAndamento = true;
       estadoViagem.coordenadas = pontosSalvos;
+      estadoViagem.inicio = estadoSalvo.inicio;
+      estadoViagem.latInicio = estadoSalvo.latInicio;
+      estadoViagem.lngInicio = estadoSalvo.lngInicio;
+      estadoViagem.config = config;
+      
+      await finalizarViagem(ultimoPonto.lat, ultimoPonto.lng, ultimoPonto.t, true);
+      console.log('[Tracking] Viagem órfã recuperada e salva na triagem.');
     } else {
-      estadoViagem.coordenadas = estadoSalvo.coordenadas || [];
+      // Viagem recente (provavelmente o app acabou de dar reload). Continua rastreando.
+      console.log('[Tracking] Recuperando viagem em curso recente...');
+      estadoViagem.emAndamento = true;
+      estadoViagem.inicio = estadoSalvo.inicio;
+      estadoViagem.latInicio = estadoSalvo.latInicio;
+      estadoViagem.lngInicio = estadoSalvo.lngInicio;
+      estadoViagem.coordenadas = pontosSalvos;
+      estadoViagem.tempoParado = estadoSalvo.tempoParado || 0;
+
+      if (onViagemAtualizada) {
+        onViagemAtualizada({ 
+          emAndamento: true, 
+          inicio: estadoViagem.inicio, 
+          coordenadas: estadoViagem.coordenadas 
+        });
+      }
     }
-    
-    if (onViagemAtualizada) {
-      onViagemAtualizada({ 
-        emAndamento: true, 
-        inicio: estadoViagem.inicio, 
-        coordenadas: estadoViagem.coordenadas 
-      });
-    }
+  } else if (pontosSalvos.length > 0) {
+    // Se existem pontos mas o estado diz que não está em andamento, algo deu erro. Limpa.
+    await limparPontosTemporarios();
   }
 
   const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
