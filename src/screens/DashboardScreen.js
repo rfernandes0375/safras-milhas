@@ -54,14 +54,12 @@ export default function DashboardScreen({ navigation }) {
             />
           </View>
           <TouchableOpacity 
-            style={estilos.statusBadge}
             onPress={async () => {
               if (!rastreamentoAtivo) {
                 try {
                   await inicializarApp();
-                  Alert.alert('Safras Milhas', 'Tentando reativar rastreamento...');
                 } catch (e) {
-                  Alert.alert('Erro', 'Não foi possível iniciar o GPS. Verifique as permissões do iPhone.');
+                  // Silencioso
                 }
               }
             }}
