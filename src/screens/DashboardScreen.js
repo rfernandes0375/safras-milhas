@@ -73,7 +73,7 @@ export default function DashboardScreen({ navigation }) {
                 rastreamentoAtivo && estilos.rastreioPontoAtivo
               ]} />
               <Text style={estilos.rastreaioTexto}>
-                {rastreamentoAtivo ? 'Rastreando' : 'Pausado (Tocar para Iniciar)'}
+                {rastreamentoAtivo ? 'Rastreando' : 'Pausado'}
               </Text>
             </View>
           </TouchableOpacity>
