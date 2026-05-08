@@ -59,8 +59,8 @@ const processarLocalizacao = async (local) => {
   const agora = timestamp || Date.now();
 
   if (!estadoViagem.emAndamento) {
-    // Iniciando rastreio mais cedo (5 km/h) para não perder o começo da rua
-    if (velocidadeKmh > 5) {
+    // Iniciando rastreio a 10 km/h (evita disparos em caminhadas)
+    if (velocidadeKmh > 10) {
       console.log('[Tracking] Viagem iniciada');
       estadoViagem.emAndamento = true;
       estadoViagem.inicio = new Date(agora).toISOString();
