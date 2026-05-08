@@ -418,6 +418,23 @@ const estilos = StyleSheet.create({
     fontWeight: tipografia.bold,
     color: cores.texto,
   },
+  infoLabel: {
+    ...tipografia.legenda,
+    color: cores.branco,
+    opacity: 0.7,
+  },
+  infoValor: {
+    ...tipografia.legenda,
+    fontWeight: 'bold',
+    color: cores.branco,
+  },
+  infoDica: {
+    ...tipografia.nota,
+    color: cores.branco,
+    opacity: 0.5,
+    marginTop: 10,
+    fontStyle: 'italic',
+  },
 
   gridInputs: { flexDirection: 'row' },
   campo: { marginBottom: espacamento.md },
