@@ -239,7 +239,7 @@ const estilos = StyleSheet.create({
   headerTitulo: { fontSize: 24, fontWeight: 'bold', color: cores.texto },
   botaoRelatorio: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: cores.primarioFundo, padding: 8, borderRadius: 12 },
   botaoRelatorioTexto: { color: cores.primario, fontWeight: 'bold' },
-  seletorMes: { paddingHorizontal: espacamento.md, paddingVertical: 10 },
+  seletorMes: { paddingHorizontal: espacamento.md, paddingVertical: 16, marginBottom: 4 },
   chipMes: { paddingHorizontal: 16, height: 36, borderRadius: 18, backgroundColor: cores.fundoCard, marginRight: 8, justifyContent: 'center', borderWidth: 1, borderColor: cores.cinzaClaro },
   chipMesSelecionado: { backgroundColor: 'rgba(0, 209, 255, 0.1)', borderColor: cores.primario },
   chipMesTexto: { color: cores.cinzaTexto, fontWeight: '600' },
