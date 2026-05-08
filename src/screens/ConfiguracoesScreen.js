@@ -114,7 +114,6 @@ export default function ConfiguracoesScreen() {
           </View>
           <View style={estilos.perfilInfo}>
             <Text style={estilos.perfilNome}>Configurações</Text>
-            <Text style={estilos.perfilSub}>Gestão de Frota e Reembolso</Text>
           </View>
         </View>
 
