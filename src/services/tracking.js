@@ -14,7 +14,7 @@ import {
   adicionarPontoTemporario, 
   buscarPontosTemporarios, 
   limparPontosTemporarios, 
-  finalizarViagemNoBanco,
+  salvarViagem,
   atualizarEnderecosViagem
 } from './database';
 import { obterEnderecoComRetry } from './geocoding';
@@ -153,10 +153,11 @@ const finalizarViagem = async (latFim, lngFim, agora, forcar = false) => {
   const provalTrabalho = eProvavelTrabalho(dadosBase, estadoViagem.config);
   const viagemInicial = { ...dadosBase, localInicio: 'Buscando endereço...', localFim: 'Buscando endereço...', provalTrabalho };
   
-  const idSalvo = await finalizarViagemNoBanco(viagemInicial);
+  const resultado = await salvarViagem(viagemInicial);
+  const idSalvo = resultado.id;
   console.log('[Tracking] Viagem salva preliminarmente com ID:', idSalvo);
 
-  if (estadoViagem.callback) estadoViagem.callback(viagemInicial);
+  if (estadoViagem.callback) estadoViagem.callback(resultado);
 
   // 5. Busca Endereços em background (sem travar o salvamento)
   try {
