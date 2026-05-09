@@ -2,7 +2,7 @@
  * DetalhesViagemScreen.js — Visualização de Trajeto e Detalhes
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, 
   StatusBar, Modal, TextInput, KeyboardAvoidingView, 
@@ -16,11 +16,19 @@ import { cores, tipografia, espacamento, bordas, sombras } from '../utils/theme'
 import { formatarMoeda, formatarKm, formatarData, formatarHora } from '../utils/calculos';
 
 export default function DetalhesViagemScreen({ route, navigation }) {
-  const { viagem } = route.params;
-  const { editarViagem, excluirViagem } = useApp();
+  const { viagem: viagemParam } = route.params;
+  const { editarViagem, excluirViagem, tentarRecuperarEndereco, viagensConfirmadas, viagensPendentes } = useApp();
+  
+  // Busca a versão mais atualizada da viagem (do contexto)
+  const viagem = [...viagensConfirmadas, ...viagensPendentes].find(v => v.id === viagemParam.id) || viagemParam;
   
   const [modalEdicao, setModalEdicao] = useState(false);
   const [novaDescricao, setNovaDescricao] = useState(viagem.descricao || '');
+
+  // Tenta recuperar endereço ao abrir a tela
+  React.useEffect(() => {
+    tentarRecuperarEndereco(viagem);
+  }, []);
 
   // Coordenadas para o mapa
   const coords = viagem.coordenadas || [];

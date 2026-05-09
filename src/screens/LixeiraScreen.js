@@ -19,7 +19,7 @@ export default function LixeiraScreen({ navigation }) {
   const [viagens, setViagens] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
-  useEffect(() => {
+  React.useEffect(() => {
     carregarLixeira();
   }, []);
 
@@ -50,7 +50,7 @@ export default function LixeiraScreen({ navigation }) {
           text: "Excluir", 
           style: "destructive",
           onPress: async () => {
-            await Database.excluirViagem(id);
+            await Database.excluirPermanente(id);
             carregarLixeira();
           }
         }

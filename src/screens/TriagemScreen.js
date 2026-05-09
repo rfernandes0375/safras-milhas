@@ -6,7 +6,7 @@
  * Swipe esquerda = Pessoal (cinza)
  */
 
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, Animated, PanResponder,
   Dimensions, TouchableOpacity, StatusBar, TextInput, Image,
@@ -23,7 +23,7 @@ const { width: LARGURA_TELA, height: ALTURA_TELA } = Dimensions.get('window');
 const LIMIAR_SWIPE = LARGURA_TELA * 0.25; 
 
 export default function TriagemScreen({ navigation }) {
-  const { viagensPendentes, classificarViagem, totalReembolsoMes, config } = useApp();
+  const { viagensPendentes, classificarViagem, totalReembolsoMes, config, tentarRecuperarEndereco } = useApp();
   const [indiceAtual, setIndiceAtual] = useState(0);
   const [swipando, setSwipando] = useState(false);
   const [descricao, setDescricao] = useState('');
@@ -100,6 +100,13 @@ export default function TriagemScreen({ navigation }) {
       setSwipando(false);
     });
   }, [swipando, indiceAtual, viagensPendentes, classificarViagem, descricao]);
+
+  // Efeito para recuperar endereços pendentes ao mostrar o card
+  React.useEffect(() => {
+    if (viagemAtual) {
+      tentarRecuperarEndereco(viagemAtual);
+    }
+  }, [indiceAtual, viagensPendentes.length]);
 
   const viagemAtual = viagensPendentes[indiceAtual];
   const proxima = viagensPendentes[indiceAtual + 1];

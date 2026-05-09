@@ -133,7 +133,22 @@ export const atualizarViagem = async (id, { descricao, valor, classificacao }) =
 };
 
 export const excluirViagem = async (id) => {
+  await db.runAsync(`UPDATE viagens SET classificacao = 'descartada' WHERE id = ?`, [id]);
+};
+
+export const excluirPermanente = async (id) => {
   await db.runAsync(`DELETE FROM viagens WHERE id = ?`, [id]);
+};
+
+export const limparLixeira = async () => {
+  await db.runAsync(`DELETE FROM viagens WHERE classificacao IN ('pessoal', 'descartada', 'descartado')`);
+};
+
+export const atualizarEnderecosViagem = async (id, localInicio, localFim) => {
+  await db.runAsync(
+    `UPDATE viagens SET local_inicio = ?, local_fim = ? WHERE id = ?`,
+    [localInicio, localFim, id]
+  );
 };
 
 export const salvarConfig = async (config) => {

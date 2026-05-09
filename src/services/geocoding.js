@@ -1,52 +1,52 @@
 /**
- * geocoding.js — Geocodificação reversa usando expo-location
- * Converte coordenadas GPS em nomes de lugares legíveis
+ * GeocodingService.js
+ * 
+ * Especialista em transformar coordenadas (lat/lon) em endereços legíveis.
+ * Implementa lógica de re-tentativa (retry) para lidar com sinal de internet instável.
  */
 
 import * as Location from 'expo-location';
 
-// Cache simples para evitar chamadas repetidas para o mesmo local
-const cache = new Map();
-
 /**
- * Converte coordenadas em nome de lugar legível
- * Exemplo: (-16.67, -49.25) → "Safras & Cifras"
+ * Busca o endereço de uma coordenada com lógica de re-tentativa.
+ * @param {number} latitude 
+ * @param {number} longitude 
+ * @param {number} maxRetries Máximo de tentativas (default 3)
+ * @returns {Promise<string>} Endereço formatado ou "Local desconhecido"
  */
-export const geocodificarCoordenada = async (latitude, longitude) => {
-  const chaveCache = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
-
-  if (cache.has(chaveCache)) {
-    return cache.get(chaveCache);
-  }
-
-  try {
-    const resultados = await Location.reverseGeocodeAsync({ latitude, longitude });
-
-    if (resultados?.length > 0) {
-      const local = resultados[0];
-      // Monta nome legível priorizando nome do estabelecimento, rua ou bairro
-      const nome = formatarLocal(local);
-      cache.set(chaveCache, nome);
-      return nome;
+export async function obterEnderecoComRetry(latitude, longitude, maxRetries = 3) {
+  let tentativa = 0;
+  
+  while (tentativa < maxRetries) {
+    try {
+      console.log(`[Geocoding] Tentativa ${tentativa + 1} para (${latitude}, ${longitude})`);
+      
+      const resultado = await Location.reverseGeocodeAsync({ latitude, longitude });
+      
+      if (resultado && resultado[0]) {
+        const { street, streetNumber, district, city, subregion, region } = resultado[0];
+        
+        // Constrói o endereço de forma inteligente, evitando campos nulos
+        const partes = [];
+        if (street) partes.push(street);
+        if (streetNumber && streetNumber !== 'S/N') partes.push(streetNumber);
+        
+        let localidade = district || subregion || city || '';
+        
+        const enderecoBase = partes.join(', ');
+        return enderecoBase ? `${enderecoBase} - ${localidade}` : localidade || 'Local identificado';
+      }
+    } catch (error) {
+      console.warn(`[Geocoding] Falha na tentativa ${tentativa + 1}:`, error.message);
     }
-  } catch (error) {
-    console.warn('[Geocoding] Erro na geocodificação:', error.message);
+    
+    tentativa++;
+    // Aguarda 1.5 segundos antes de tentar de novo (tempo para o sinal talvez estabilizar)
+    if (tentativa < maxRetries) {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
   }
-
+  
+  console.error('[Geocoding] Todas as tentativas falharam.');
   return 'Local desconhecido';
-};
-
-/** Formata resultado da geocodificação em string amigável */
-const formatarLocal = (local) => {
-  // Prioridade: nome do lugar > rua + número > bairro > cidade
-  if (local.name && !local.name.match(/^\d/)) {
-    return local.name;
-  }
-
-  const partes = [];
-  if (local.street) partes.push(local.street);
-  if (local.district || local.subregion) partes.push(local.district || local.subregion);
-  if (local.city) partes.push(local.city);
-
-  return partes.length > 0 ? partes.join(', ') : 'Local desconhecido';
-};
+}

@@ -5,6 +5,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import * as Database from '../services/database';
 import * as Tracking from '../services/tracking';
+import { obterEnderecoComRetry } from '../services/geocoding';
 import { calcularReembolso } from '../utils/calculos';
 
 const AppContext = createContext(null);
@@ -75,7 +76,7 @@ export const AppProvider = ({ children }) => {
     }
   }, []);
 
-  useEffect(() => {
+  React.useEffect(() => {
     inicializarApp();
   }, []);
 
@@ -90,7 +91,7 @@ export const AppProvider = ({ children }) => {
     setViagensConfirmadas(confirmadas);
   }, [mesAtual]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!carregando) carregarViagens();
   }, [mesAtual]);
 
@@ -143,6 +144,39 @@ export const AppProvider = ({ children }) => {
   const excluirViagem = useCallback(async (id) => {
     await Database.excluirViagem(id);
     setViagensConfirmadas(prev => prev.filter(v => v.id !== id));
+    setViagensPendentes(prev => prev.filter(v => v.id !== id));
+  }, []);
+
+  const limparLixeira = useCallback(async () => {
+    await Database.limparLixeira();
+  }, []);
+
+  // 5. Recuperação de Endereço (Conserta "Local desconhecido")
+  const tentarRecuperarEndereco = useCallback(async (viagem) => {
+    if (!viagem) return;
+    
+    // Se ambos os endereços já estão preenchidos, não faz nada
+    const inicioDesconhecido = !viagem.localInicio || viagem.localInicio === 'Local desconhecido';
+    const fimDesconhecido = !viagem.localFim || viagem.localFim === 'Local desconhecido';
+    
+    if (!inicioDesconhecido && !fimDesconhecido) return;
+
+    console.log(`[AppContext] Tentando recuperar endereços para viagem ${viagem.id}`);
+    
+    const [novoInicio, novoFim] = await Promise.all([
+      inicioDesconhecido ? obterEnderecoComRetry(viagem.latInicio, viagem.lngInicio) : Promise.resolve(viagem.localInicio),
+      fimDesconhecido ? obterEnderecoComRetry(viagem.latFim, viagem.lngFim) : Promise.resolve(viagem.localFim)
+    ]);
+
+    if (novoInicio !== viagem.localInicio || novoFim !== viagem.localFim) {
+      await Database.atualizarEnderecosViagem(viagem.id, novoInicio, novoFim);
+      
+      // Atualiza o estado local para refletir na UI imediatamente
+      const atualizarLista = (lista) => lista.map(v => v.id === viagem.id ? { ...v, localInicio: novoInicio, localFim: novoFim } : v);
+      
+      setViagensPendentes(atualizarLista);
+      setViagensConfirmadas(atualizarLista);
+    }
   }, []);
 
   const salvarConfig = useCallback(async (novaConfig) => {
@@ -167,6 +201,8 @@ export const AppProvider = ({ children }) => {
       viagemEmCurso,
       classificarViagem, editarViagem, excluirViagem, salvarConfig, carregarViagens, carregando,
       pararViagem,
+      tentarRecuperarEndereco,
+      limparLixeira,
       inicializarApp,
     }}>
       {children}
