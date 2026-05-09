@@ -56,9 +56,8 @@ export const AppProvider = ({ children }) => {
       // Inicia Rastreamento
       const ativo = await Tracking.iniciarRastreamento({
         config: configSalva || CONFIG_PADRAO,
-        onViagemDetectada: async (viagem) => {
-          await handleNovaViagem(viagem);
-          await carregarViagens(); // Recarrega para garantir que apareça na lista
+        onViagemDetectada: async () => {
+          await carregarViagens(); // Recarrega do banco assim que o motor salva
         },
         onViagemAtualizada: (estado) => {
           setViagemEmCurso(!!estado?.emAndamento);
@@ -95,13 +94,10 @@ export const AppProvider = ({ children }) => {
     if (!carregando) carregarViagens();
   }, [mesAtual]);
 
-  // 3. Callback quando o GPS detecta fim de viagem
-  const handleNovaViagem = useCallback(async (novaViagem) => {
-    // Calcula valor inicial (mesmo sendo pendente)
-    const valor = calcularReembolso(novaViagem.distanciaKm, config);
-    const viagemComId = await Database.salvarViagem({ ...novaViagem, valor });
-    setViagensPendentes(prev => [viagemComId, ...prev]);
-  }, [config]);
+  // 3. Callback quando o GPS detecta fim de viagem (apenas para atualizar a lista)
+  const handleNovaViagem = useCallback(async () => {
+    await carregarViagens();
+  }, [carregarViagens]);
 
   // 4. Lógica de Classificação (O que acontece no Swipe)
   const classificarViagem = useCallback(async (id, classificacao, descricao = '') => {

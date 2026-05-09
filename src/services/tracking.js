@@ -14,7 +14,8 @@ import {
   adicionarPontoTemporario, 
   buscarPontosTemporarios, 
   limparPontosTemporarios, 
-  finalizarViagemNoBanco 
+  finalizarViagemNoBanco,
+  atualizarEnderecosViagem
 } from './database';
 import { obterEnderecoComRetry } from './geocoding';
 import { calcularDistanciaKm, eProvavelTrabalho } from '../utils/calculos';
@@ -148,20 +149,29 @@ const finalizarViagem = async (latFim, lngFim, agora, forcar = false) => {
     return;
   }
 
-  // 4. Busca Endereços (Agora com RETRY e GeocodingService)
-  console.log('[Tracking] Buscando endereços...');
-  const [localInicio, localFim] = await Promise.all([
-    obterEnderecoComRetry(dadosBase.latInicio, dadosBase.lngInicio),
-    obterEnderecoComRetry(latFim, lngFim)
-  ]);
-
-  // 5. Salva no Banco definitivo
+  // 4. Salva no Banco IMEDIATAMENTE (Custe o que custar)
   const provalTrabalho = eProvavelTrabalho(dadosBase, estadoViagem.config);
-  const viagemCompleta = { ...dadosBase, localInicio, localFim, provalTrabalho };
+  const viagemInicial = { ...dadosBase, localInicio: 'Buscando endereço...', localFim: 'Buscando endereço...', provalTrabalho };
   
-  await finalizarViagemNoBanco(viagemCompleta);
-  if (estadoViagem.callback) estadoViagem.callback(viagemCompleta);
-  console.log('[Tracking] Viagem salva com sucesso!');
+  const idSalvo = await finalizarViagemNoBanco(viagemInicial);
+  console.log('[Tracking] Viagem salva preliminarmente com ID:', idSalvo);
+
+  if (estadoViagem.callback) estadoViagem.callback(viagemInicial);
+
+  // 5. Busca Endereços em background (sem travar o salvamento)
+  try {
+    console.log('[Tracking] Buscando endereços em background...');
+    const [localInicio, localFim] = await Promise.all([
+      obterEnderecoComRetry(dadosBase.latInicio, dadosBase.lngInicio),
+      obterEnderecoComRetry(latFim, lngFim)
+    ]);
+    
+    // Atualiza o registro com os endereços reais
+    await atualizarEnderecosViagem(idSalvo, localInicio, localFim);
+    console.log('[Tracking] Endereços atualizados com sucesso!');
+  } catch (err) {
+    console.warn('[Tracking] Falha ao buscar endereços, mas a viagem está salva.', err.message);
+  }
 };
 
 // ─── API PÚBLICA ─────────────────────────────────────────────────────────────
