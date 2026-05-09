@@ -90,11 +90,31 @@ const iniciarNovaViagem = async (lat, lng, agora) => {
 
 const registrarMovimento = async (lat, lng, vel, agora) => {
   const ultimoPonto = estadoViagem.coordenadas[estadoViagem.coordenadas.length - 1];
-  
-  // Evita salvar pontos duplicados se estiver parado
+
+  // 1. Contagem de tempo parado (Deve vir ANTES do filtro de distância)
+  if (vel < 3) {
+    if (ultimoPonto) {
+      estadoViagem.tempoParado += (agora - ultimoPonto.t);
+    }
+    
+    // Se parado por mais de 180 segundos (3 minutos), encerra a viagem
+    if (estadoViagem.tempoParado >= 180000) {
+      console.log('[Tracking] Auto-stop detectado (3 min parado)');
+      await finalizarViagem(lat, lng, agora);
+      return;
+    }
+  } else {
+    estadoViagem.tempoParado = 0;
+  }
+
+  // 2. Filtro de distância (Para não sujar o mapa com pontos inúteis)
   if (ultimoPonto) {
     const dist = calcularDistanciaKm([{lat: ultimoPonto.lat, lng: ultimoPonto.lng}, {lat, lng}]) * 1000;
-    if (dist < 10 && vel < 3) return;
+    if (dist < 10 && vel < 3) {
+      // Mesmo sem salvar o ponto, atualizamos o estado para manter o motor vivo
+      await salvarEstadoRastreamento({ ...estadoViagem, coordenadas: [] });
+      return;
+    }
   }
 
   estadoViagem.coordenadas.push({ lat, lng, t: agora });
@@ -102,16 +122,6 @@ const registrarMovimento = async (lat, lng, vel, agora) => {
   
   // Persistência agressiva: Salva o progresso para recuperação pós-crash
   await salvarEstadoRastreamento({ ...estadoViagem, coordenadas: [] });
-  if (vel < 3) {
-    const penultimo = estadoViagem.coordenadas[estadoViagem.coordenadas.length - 2];
-    if (penultimo) estadoViagem.tempoParado += agora - penultimo.t;
-    
-    if (estadoViagem.tempoParado >= 60000) {
-      await finalizarViagem(lat, lng, agora);
-    }
-  } else {
-    estadoViagem.tempoParado = 0;
-  }
   
   // Salva metadados (sem as coordenadas pesadas)
   await salvarEstadoRastreamento({ ...estadoViagem, coordenadas: [] });
@@ -217,8 +227,8 @@ export const iniciarRastreamento = async ({ onViagemDetectada, onViagemAtualizad
     const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
     if (bgStatus === 'granted') {
       await Location.startLocationUpdatesAsync(TASK_RASTREAMENTO, {
-        accuracy: Location.Accuracy.High,
-        distanceInterval: 30,
+        accuracy: Location.Accuracy.BestForNavigation,
+        distanceInterval: 10,
         showsBackgroundLocationIndicator: true,
         pausesUpdatesAutomatically: false,
         allowsBackgroundLocationUpdates: true,
